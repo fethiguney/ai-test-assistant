@@ -1,0 +1,24 @@
+[
+  {
+    "action": "goto",
+    "url": "https://the-internet.herokuapp.com/login"
+  },
+  {
+    "action": "fill",
+    "selector": "#username",
+    "value": "tom smith"
+  },
+  {
+    "action": "fill",
+    "selector": "#password",
+    "value": "SuperSecretPassword!"
+  },
+  {
+    "action": "click",
+    "selector": "button[type='submit']"
+  },
+  {
+    "action": "expectVisible",
+    "selector": ".flash.success"
+  }
+]

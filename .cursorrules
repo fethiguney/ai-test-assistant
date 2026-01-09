@@ -1,0 +1,58 @@
+# AI Test Assistant - Dev Rules
+
+## Project
+- AI Test Assistant: NL → test steps, multi-LLM, human-in-loop
+- Stack: Node.js, TypeScript, Express, Playwright
+
+## Structure
+```
+backend/src/
+├── config/     # Config
+├── types/      # Types
+├── llm/        # LLM providers
+├── services/   # Business logic
+├── api/        # Routes & middleware
+```
+
+## SOLID (Always Follow)
+- **S**: One class = one job
+- **O**: Extend, don't modify
+- **L**: Subtypes replaceable
+- **I**: Small interfaces
+- **D**: Depend on abstractions, use DI
+
+## Clean Code
+- Descriptive names (isActive, getUserById)
+- Small functions (<30 lines)
+- Early return, no deep nesting
+- DRY, but Rule of Three
+
+## File Template
+```typescript
+/**
+ * [Name] - [One line description]
+ */
+import { } from '../module/index.js';
+
+export class Name {
+  constructor(private readonly dep: IDep) {}
+  async method() {}
+}
+
+export function createName(dep: IDep) {
+  return new Name(dep);
+}
+```
+
+## Adding Features
+1. Types in `types/`
+2. Service in `services/`
+3. Routes in `api/routes/`
+4. Export via `index.ts`
+
+## Don'ts
+- God classes
+- Magic strings
+- Deep nesting (>3)
+- 4+ params (use object)
+- Global state

@@ -1,0 +1,38 @@
+{
+  "name": "ai-test-assistant-backend",
+  "version": "1.0.0",
+  "description": "AI Test Assistant Backend - LLM orchestration for test automation",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test:llm": "tsx src/test-llm.ts",
+    "test:executor": "tsx src/test-executor.ts"
+  },
+  "keywords": [
+    "ai",
+    "testing",
+    "llm",
+    "playwright",
+    "automation"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@playwright/test": "^1.57.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "groq-sdk": "^0.5.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.10.0",
+    "tsx": "^4.6.0",
+    "typescript": "^5.3.0"
+  }
+}
