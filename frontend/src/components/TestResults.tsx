@@ -15,35 +15,37 @@ export default function TestResults({ result }: Props) {
         </span>
       </div>
 
-      <div className="result-card">
-        <h3>Execution Info</h3>
-        <div className="info-grid">
-          <div className="info-item">
-            <span className="label">LLM Provider:</span>
-            <span className="value">{result.llmUsed.provider}</span>
-          </div>
-          <div className="info-item">
-            <span className="label">Model:</span>
-            <span className="value">{result.llmUsed.model}</span>
-          </div>
-          <div className="info-item">
-            <span className="label">Generation Time:</span>
-            <span className="value">{result.llmUsed.latencyMs}ms</span>
-          </div>
-          {result.executionMethod && (
+      {result.llmUsed && (
+        <div className="result-card">
+          <h3>Execution Info</h3>
+          <div className="info-grid">
             <div className="info-item">
-              <span className="label">Execution Method:</span>
-              <span className="value">{result.executionMethod === 'mcp' ? 'MCP Protocol' : 'Direct'}</span>
+              <span className="label">LLM Provider:</span>
+              <span className="value">{result.llmUsed.provider || 'N/A'}</span>
             </div>
-          )}
-          {result.mcpClient && (
             <div className="info-item">
-              <span className="label">MCP Client:</span>
-              <span className="value">{result.mcpClient}</span>
+              <span className="label">Model:</span>
+              <span className="value">{result.llmUsed.model || 'N/A'}</span>
             </div>
-          )}
+            <div className="info-item">
+              <span className="label">Generation Time:</span>
+              <span className="value">{result.llmUsed.latencyMs || 0}ms</span>
+            </div>
+            {result.executionMethod && (
+              <div className="info-item">
+                <span className="label">Execution Method:</span>
+                <span className="value">{result.executionMethod === 'mcp' ? 'MCP Protocol' : 'Direct'}</span>
+              </div>
+            )}
+            {result.mcpClient && (
+              <div className="info-item">
+                <span className="label">MCP Client:</span>
+                <span className="value">{result.mcpClient}</span>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="result-card">
         <h3>Generated Steps ({result.generatedSteps.length})</h3>

@@ -55,10 +55,18 @@ function App() {
       console.log('Session completed:', data)
       setSessionState('completed')
       setCurrentApprovalRequest(null)
+      setLoading(false) // Ensure loading is false
+      
+      // Reset to idle after a short delay to allow user to see results
+      setTimeout(() => {
+        setSessionState('idle')
+      }, 2000)
     },
     onError: (error: any) => {
       console.error('WebSocket error:', error)
       alert(`Error: ${error.message || 'Unknown error'}`)
+      setSessionState('idle') // Reset on error
+      setLoading(false) // Ensure loading is false
     },
   })
 
@@ -70,6 +78,7 @@ function App() {
   ) => {
     if (mode === 'websocket') {
       // Use WebSocket with human-in-loop
+      setLoading(false) // Ensure loading is false for WebSocket mode
       setSessionState('generating')
       setGeneratedSteps([])
       setCurrentApprovalRequest(null)
@@ -93,19 +102,24 @@ function App() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            scenario: prompt,
+            prompt,
             llmProvider: llmProvider === 'auto' ? undefined : llmProvider,
             mcpClient,
             executeImmediately,
-            executionMethod: mcpClient ? 'mcp' : 'direct',
           }),
         })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.message || `HTTP ${response.status}`)
+        }
 
         const data = await response.json()
         setResult(data)
       } catch (error) {
         console.error('Test run failed:', error)
-        alert('Failed to run test. Check console for details.')
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+        alert(`Failed to run test: ${errorMessage}`)
       } finally {
         setLoading(false)
       }
@@ -181,7 +195,7 @@ function App() {
       <main className="app-main">
         <TestPromptInput
           onSubmit={handleTestRun}
-          loading={loading || sessionState !== 'idle'}
+          loading={mode === 'api' ? loading : sessionState !== 'idle' && sessionState !== 'completed'}
         />
 
         {/* WebSocket Mode - Approval UI */}

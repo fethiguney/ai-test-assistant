@@ -29,7 +29,7 @@ export interface DynamicTestRunResponse {
   id: string
   prompt: string
   generatedSteps: TestStep[]
-  llmUsed: {
+  llmUsed?: {
     provider: string
     model: string
     latencyMs: number
