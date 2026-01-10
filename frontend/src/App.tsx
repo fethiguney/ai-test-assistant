@@ -243,6 +243,54 @@ function App() {
                 </ol>
               </div>
             )}
+
+            {/* WebSocket Mode - Execution Results (After Completion) */}
+            {(sessionState === 'completed' || sessionState === 'cancelled') && executionResults.length > 0 && (
+              <div className="websocket-results">
+                <h3>Execution Results</h3>
+                <div className="execution-summary">
+                  <div className="summary-stats">
+                    <span className="stat">
+                      Total Steps: {executionResults.length}
+                    </span>
+                    <span className="stat success">
+                      Passed: {executionResults.filter(r => r.status === 'passed').length}
+                    </span>
+                    <span className="stat failure">
+                      Failed: {executionResults.filter(r => r.status === 'failed').length}
+                    </span>
+                    <span className="stat skipped">
+                      Skipped: {executionResults.filter(r => r.status === 'skipped').length}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="execution-details">
+                  {executionResults.map((result, idx) => (
+                    <div key={idx} className={`result-item result-${result.status}`}>
+                      <div className="result-header">
+                        <span className="result-icon">
+                          {result.status === 'passed' ? '✅' : result.status === 'failed' ? '❌' : '⊘'}
+                        </span>
+                        <span className="result-action">{result.action}</span>
+                        <span className="result-duration">{result.duration}ms</span>
+                      </div>
+                      {result.message && (
+                        <div className="result-message">{result.message}</div>
+                      )}
+                      {result.error && (
+                        <div className="result-error">Error: {result.error}</div>
+                      )}
+                      {result.screenshot && (
+                        <div className="result-screenshot">
+                          <img src={`data:image/png;base64,${result.screenshot}`} alt="Screenshot" />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

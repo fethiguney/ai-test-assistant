@@ -60,3 +60,7 @@ export function validateConfig(): void {
     throw new Error(`Configuration errors:\n${errors.join('\n')}`);
   }
 }
+
+// Export MCP configuration
+export { getMCPConfig, defaultMCPConfig, validateMCPConfig } from './mcp.config.js';
+export type { MCPServerConfig } from './mcp.config.js';

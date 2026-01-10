@@ -34,9 +34,11 @@ Abstract class providing common functionality:
 - ID generation utilities
 
 #### 3. PlaywrightMCPClient
-Concrete implementation for Playwright:
-- Currently wraps `StepExecutorService`
-- Ready for actual MCP SDK integration
+Concrete implementation using official Microsoft @playwright/mcp:
+- Uses `@playwright/mcp` package (v0.0.55)
+- Integrates with MCP SDK (`@modelcontextprotocol/sdk`)
+- Maps test steps to official MCP tools
+- Provides fallback to direct execution
 - Supports all Playwright actions
 
 #### 4. MCPManager
@@ -155,16 +157,20 @@ Results show:
 ### ✅ Completed
 - [x] MCP type definitions
 - [x] Base MCP client architecture
-- [x] Playwright MCP client (wrapper)
+- [x] Playwright MCP client using **official @playwright/mcp package**
+- [x] MCP tool executor service for step mapping
+- [x] MCP server configuration system
 - [x] MCP manager with lifecycle management
 - [x] API endpoints for MCP management
 - [x] Integration with test orchestrator
 - [x] Frontend MCP client selection
 - [x] Execution method tracking
+- [x] Official Microsoft playwright-mcp integration
+- [x] Fallback mechanism for compatibility
 
 ### 🚧 In Progress
-- [ ] Actual MCP SDK integration
-- [ ] MCP protocol communication
+- [ ] Full MCP tool call implementation
+- [ ] Advanced MCP protocol features
 
 ### 📋 Future
 - [ ] Appium MCP client (mobile testing)
@@ -172,13 +178,107 @@ Results show:
 - [ ] Custom MCP client support
 - [ ] MCP server configuration UI
 
+## Official Microsoft Playwright-MCP Integration
+
+### Package Information
+- **Package**: `@playwright/mcp` (v0.0.55)
+- **MCP SDK**: `@modelcontextprotocol/sdk` (v1.25.2)
+- **Repository**: https://github.com/microsoft/playwright-mcp
+
+### Architecture
+
+The integration uses the official Microsoft playwright-mcp package:
+
+```
+AI Test Assistant
+      ↓
+PlaywrightMCPClient
+      ↓
+MCPToolExecutorService
+      ↓
+@playwright/mcp (createConnection)
+      ↓
+Playwright Browser
+```
+
+### Key Components
+
+1. **@playwright/mcp Integration**
+   - Uses `createConnection()` to create in-process MCP server
+   - Configures headless browser by default
+   - Provides access to all official MCP tools
+
+2. **MCPToolExecutorService**
+   - Maps test steps to MCP tools
+   - Converts actions like `navigate`, `click`, `type` to MCP tool calls
+   - Handles tool execution and result conversion
+
+3. **MCP Configuration (`mcp.config.ts`)**
+   - Browser configuration (headless, timeout, viewport)
+   - Capabilities selection
+   - Output directory settings
+   - Console and network settings
+
+### Supported MCP Tools
+
+The integration supports these official Playwright MCP tools:
+
+**Core Automation:**
+- `browser_navigate` - Navigate to URLs
+- `browser_click` - Click elements
+- `browser_type` - Type text into inputs
+- `browser_select_option` - Select dropdown options
+- `browser_press_key` - Press keyboard keys
+- `browser_wait_for` - Wait for conditions
+- `browser_snapshot` - Capture page snapshots
+- `browser_take_screenshot` - Take screenshots
+- `browser_hover` - Hover over elements
+- `browser_drag` - Drag and drop
+- `browser_fill_form` - Fill multiple form fields
+- `browser_handle_dialog` - Handle dialogs
+- `browser_close` - Close browser
+
+**Information:**
+- `browser_console_messages` - Get console logs
+- `browser_network_requests` - Get network activity
+- `browser_tabs` - Manage browser tabs
+
+### Configuration
+
+Configure MCP in `backend/src/config/mcp.config.ts`:
+
+```typescript
+export const defaultMCPConfig: MCPServerConfig = {
+  browser: {
+    browserName: 'chromium',
+    launchOptions: {
+      headless: true,
+      timeout: 30000,
+    },
+    contextOptions: {
+      viewport: { width: 1280, height: 720 },
+    },
+  },
+  capabilities: ['core'],
+  timeouts: {
+    action: 5000,
+    navigation: 60000,
+  },
+};
+```
+
+### Fallback Mechanism
+
+If the official MCP integration fails to initialize, the client automatically falls back to direct Playwright execution, ensuring reliability.
+
 ## Benefits of MCP Integration
 
-1. **Standardization**: Consistent interface across different test frameworks
-2. **Extensibility**: Easy to add new test executors (Appium, API, etc.)
-3. **Flexibility**: Choose execution method per test run
-4. **Future-Proof**: Ready for MCP SDK when integrated
-5. **Fallback Support**: Direct execution still available
+1. **Official Support**: Uses Microsoft's official playwright-mcp package
+2. **Standardization**: Consistent interface across different test frameworks
+3. **Extensibility**: Easy to add new test executors (Appium, API, etc.)
+4. **Flexibility**: Choose execution method per test run
+5. **Reliability**: Automatic fallback to direct execution
+6. **Future-Proof**: Ready for new MCP features as they're released
 
 ## Testing
 

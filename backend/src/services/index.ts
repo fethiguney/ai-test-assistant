@@ -21,3 +21,7 @@ export {
   ApprovalManagerService,
   approvalManager,
 } from './approval-manager.service.js';
+
+export {
+  MCPToolExecutorService,
+} from './mcp-tool-executor.service.js';

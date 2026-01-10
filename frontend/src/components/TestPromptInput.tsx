@@ -1,22 +1,27 @@
-import { useState } from 'react'
-import './TestPromptInput.css'
+import { useState } from "react";
+import "./TestPromptInput.css";
 
 interface Props {
-  onSubmit: (prompt: string, llmProvider: string, mcpClient: string, executeImmediately: boolean) => void
-  loading: boolean
+  onSubmit: (
+    prompt: string,
+    llmProvider: string,
+    mcpClient: string,
+    executeImmediately: boolean
+  ) => void;
+  loading: boolean;
 }
 
 export default function TestPromptInput({ onSubmit, loading }: Props) {
-  const [prompt, setPrompt] = useState('')
-  const [llmProvider, setLlmProvider] = useState('auto')
-  const [mcpClient, setMcpClient] = useState('playwright')
-  const [executeImmediately, setExecuteImmediately] = useState(false)
+  const [prompt, setPrompt] = useState("");
+  const [llmProvider, setLlmProvider] = useState("auto");
+  const [mcpClient, setMcpClient] = useState("playwright");
+  const [executeImmediately, setExecuteImmediately] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!prompt.trim()) return
-    onSubmit(prompt, llmProvider, mcpClient, executeImmediately)
-  }
+    e.preventDefault();
+    if (!prompt.trim()) return;
+    onSubmit(prompt, llmProvider, mcpClient, executeImmediately);
+  };
 
   return (
     <div className="test-prompt-input">
@@ -43,7 +48,6 @@ export default function TestPromptInput({ onSubmit, loading }: Props) {
               onChange={(e) => setLlmProvider(e.target.value)}
               disabled={loading}
             >
-              <option value="auto">Auto (Current Active)</option>
               <option value="groq">Groq (Fast, Cloud)</option>
               <option value="ollama">Ollama (Local)</option>
             </select>
@@ -77,9 +81,13 @@ export default function TestPromptInput({ onSubmit, loading }: Props) {
         </div>
 
         <button type="submit" disabled={loading || !prompt.trim()}>
-          {loading ? '⏳ Processing...' : executeImmediately ? '🚀 Generate & Execute' : '📝 Generate Steps'}
+          {loading
+            ? "⏳ Processing..."
+            : executeImmediately
+            ? "🚀 Generate & Execute"
+            : "📝 Generate Steps"}
         </button>
       </form>
     </div>
-  )
+  );
 }

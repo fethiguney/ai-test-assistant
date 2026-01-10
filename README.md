@@ -8,7 +8,7 @@ AI-powered test automation assistant that converts natural language test scenari
 - **Multi-LLM Support**: Ollama (local), Groq (cloud/free), and more
 - **Human-in-the-Loop**: WebSocket-based step-by-step approval with real-time updates
 - **Dual Execution Modes**: API (automatic) or WebSocket (manual approval)
-- **MCP Integration**: Model Context Protocol for flexible test execution
+- **Official MCP Integration**: Uses Microsoft's @playwright/mcp package for standardized browser automation
 - **Modular Architecture**: Clean, extensible, SOLID-compliant codebase
 
 ## 📁 Project Structure
@@ -208,6 +208,9 @@ llmManager.registerProvider(new NewProvider());
 
 ## 📚 Documentation
 
+- [MCP Integration Guide](backend/MCP-INTEGRATION-GUIDE.md) - Official Microsoft Playwright-MCP integration
+- [MCP Documentation](docs/MCP-INTEGRATION.md) - Detailed MCP architecture and usage
+- [Human-in-the-Loop](docs/HUMAN-IN-LOOP.md) - WebSocket-based approval system
 - [Feature Development Guide](docs/development/feature-development.md)
 - [Refactoring Guide](docs/development/refactoring-guide.md)
 - [Architecture Decisions](docs/development/architecture-decisions.md)
@@ -216,12 +219,14 @@ llmManager.registerProvider(new NewProvider());
 
 - [x] LLM abstraction layer (Ollama, Groq)
 - [x] Test step generation from natural language
-- [x] REST API
-- [ ] Step Executor (Playwright integration)
-- [ ] Frontend UI
-- [ ] Test scenario storage
-- [ ] Human-in-the-loop execution
-- [ ] Mobile test support (Appium)
+- [x] REST API with WebSocket support
+- [x] Step Executor (Playwright integration)
+- [x] Frontend UI with real-time updates
+- [x] Human-in-the-loop execution
+- [x] MCP Integration (Official Microsoft playwright-mcp)
+- [ ] Advanced MCP features (PDF, vision, tracing)
+- [ ] Test scenario storage and history
+- [ ] Mobile test support (Appium MCP)
 - [ ] API test support
 
 ## 📄 License

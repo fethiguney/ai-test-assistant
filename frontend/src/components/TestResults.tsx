@@ -1,8 +1,8 @@
-import { DynamicTestRunResponse } from '../types'
-import './TestResults.css'
+import { DynamicTestRunResponse } from "../types";
+import "./TestResults.css";
 
 interface Props {
-  result: DynamicTestRunResponse
+  result: DynamicTestRunResponse;
 }
 
 export default function TestResults({ result }: Props) {
@@ -11,7 +11,7 @@ export default function TestResults({ result }: Props) {
       <div className="results-header">
         <h2>Test Results</h2>
         <span className={`status-badge ${result.status}`}>
-          {result.status === 'executed' ? '✅ Executed' : '📝 Generated'}
+          {result.status === "executed" ? "✅ Executed" : "📝 Generated"}
         </span>
       </div>
 
@@ -21,11 +21,11 @@ export default function TestResults({ result }: Props) {
           <div className="info-grid">
             <div className="info-item">
               <span className="label">LLM Provider:</span>
-              <span className="value">{result.llmUsed.provider || 'N/A'}</span>
+              <span className="value">{result.llmUsed.provider || "N/A"}</span>
             </div>
             <div className="info-item">
               <span className="label">Model:</span>
-              <span className="value">{result.llmUsed.model || 'N/A'}</span>
+              <span className="value">{result.llmUsed.model || "N/A"}</span>
             </div>
             <div className="info-item">
               <span className="label">Generation Time:</span>
@@ -34,7 +34,9 @@ export default function TestResults({ result }: Props) {
             {result.executionMethod && (
               <div className="info-item">
                 <span className="label">Execution Method:</span>
-                <span className="value">{result.executionMethod === 'mcp' ? 'MCP Protocol' : 'Direct'}</span>
+                <span className="value">
+                  {result.executionMethod === "mcp" ? "MCP Protocol" : "Direct"}
+                </span>
               </div>
             )}
             {result.mcpClient && (
@@ -55,9 +57,15 @@ export default function TestResults({ result }: Props) {
               <div className="step-number">{i + 1}</div>
               <div className="step-content">
                 <div className="step-action">{step.action}</div>
-                {step.target && <div className="step-target">Target: {step.target}</div>}
-                {step.value && <div className="step-value">Value: {step.value}</div>}
-                {step.description && <div className="step-description">{step.description}</div>}
+                {step.target && (
+                  <div className="step-target">Target: {step.target}</div>
+                )}
+                {step.value && (
+                  <div className="step-value">Value: {step.value}</div>
+                )}
+                {step.description && (
+                  <div className="step-description">{step.description}</div>
+                )}
               </div>
             </div>
           ))}
@@ -69,7 +77,7 @@ export default function TestResults({ result }: Props) {
           <h3>Execution Results</h3>
           <div className="execution-summary">
             <div className={`execution-status ${result.execution.status}`}>
-              {result.execution.status === 'passed' ? '✅ PASSED' : '❌ FAILED'}
+              {result.execution.status === "passed" ? "✅ PASSED" : "❌ FAILED"}
             </div>
             <div className="execution-duration">
               Duration: {result.execution.totalDuration}ms
@@ -81,9 +89,9 @@ export default function TestResults({ result }: Props) {
               <div key={i} className={`execution-step ${stepResult.status}`}>
                 <div className="step-header">
                   <span className="step-icon">
-                    {stepResult.status === 'passed' ? '✅' : '❌'}
+                    {stepResult.status === "passed" ? "✅" : "❌"}
                   </span>
-                  <span className="step-action">{stepResult.step.action}</span>
+                  <span className="step-action">{stepResult.action}</span>
                   <span className="step-duration">{stepResult.duration}ms</span>
                 </div>
                 {stepResult.error && (
@@ -95,5 +103,5 @@ export default function TestResults({ result }: Props) {
         </div>
       )}
     </div>
-  )
+  );
 }
