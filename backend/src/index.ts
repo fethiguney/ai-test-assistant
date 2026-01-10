@@ -7,10 +7,12 @@
  * - Middleware registration
  * - Route mounting
  * - Server startup
+ * - WebSocket server initialization
  */
 
 import express from "express";
 import cors from "cors";
+import { createServer } from "http";
 
 import { config, validateConfig } from "./config/index.js";
 import {
@@ -19,6 +21,7 @@ import {
   testRoutes,
   errorHandler,
 } from "./api/index.js";
+import { WebSocketServer } from "./websocket/index.js";
 
 // ============================================
 // Validate Configuration
@@ -59,16 +62,23 @@ app.use("/api/test", testRoutes);
 app.use(errorHandler);
 
 // ============================================
-// Start Server
+// Start Server with WebSocket Support
 // ============================================
 
 const PORT = config.server.port;
 
-app.listen(PORT, () => {
+// Create HTTP server
+const httpServer = createServer(app);
+
+// Initialize WebSocket server
+const wsServer = new WebSocketServer(httpServer);
+
+httpServer.listen(PORT, () => {
   console.log(`
 ╔════════════════════════════════════════════════════════════╗
 ║           AI Test Assistant Backend v1.0                   ║
 ║           Running on http://localhost:${PORT}                ║
+║           WebSocket: ws://localhost:${PORT}                  ║
 ╠════════════════════════════════════════════════════════════╣
 ║  Health:                                                   ║
 ║    GET  /health                   Health check             ║
@@ -88,8 +98,23 @@ app.listen(PORT, () => {
 ║    GET  /api/test/mcp/clients     List MCP clients         ║
 ║    POST /api/test/mcp/clients/active Set active MCP client║
 ║    POST /api/test/validate-steps  Validate steps format    ║
+╠════════════════════════════════════════════════════════════╣
+║  WebSocket Events (Human-in-Loop):                         ║
+║    test:start                     Start test session       ║
+║    step:approval                  Approve/reject step      ║
+║    session:cancel                 Cancel active session    ║
 ╚════════════════════════════════════════════════════════════╝
   `);
 });
 
-export { app };
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, closing server...');
+  wsServer.close();
+  httpServer.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
+});
+
+export { app, httpServer, wsServer };

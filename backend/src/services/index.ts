@@ -16,3 +16,8 @@ export {
   TestOrchestratorService,
   createTestOrchestratorService,
 } from './test-orchestrator.service.js';
+
+export {
+  ApprovalManagerService,
+  approvalManager,
+} from './approval-manager.service.js';

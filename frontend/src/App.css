@@ -21,6 +21,69 @@
   font-size: 1.1rem;
 }
 
+.mode-switcher {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.mode-switcher label {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+}
+
+.mode-buttons {
+  display: flex;
+  gap: 1rem;
+}
+
+.mode-btn {
+  padding: 0.5rem 1.5rem;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mode-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.mode-btn.active {
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--primary);
+  border-color: #fff;
+}
+
+.mode-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.connection-status {
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+}
+
+.connection-status.connected {
+  color: #4caf50;
+  background: rgba(76, 175, 80, 0.1);
+}
+
+.connection-status.disconnected {
+  color: #f44336;
+  background: rgba(244, 67, 54, 0.1);
+}
+
 .app-main {
   flex: 1;
   max-width: 1200px;
@@ -35,4 +98,190 @@
   text-align: center;
   color: var(--text-muted);
   border-top: 1px solid var(--border);
+}
+
+.session-status {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+}
+
+.session-info {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1rem;
+}
+
+.session-id {
+  color: var(--text-muted);
+  font-family: 'Courier New', monospace;
+  font-size: 0.875rem;
+}
+
+.session-state {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.state-idle {
+  background: #666;
+  color: #fff;
+}
+
+.state-generating {
+  background: #2196f3;
+  color: #fff;
+}
+
+.state-awaiting_approval {
+  background: #ff9800;
+  color: #fff;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.state-executing {
+  background: #9c27b0;
+  color: #fff;
+}
+
+.state-completed {
+  background: #4caf50;
+  color: #fff;
+}
+
+.state-cancelled {
+  background: #f44336;
+  color: #fff;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.btn-cancel {
+  margin-left: auto;
+  padding: 0.5rem 1rem;
+  background: #f44336;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-cancel:hover {
+  background: #d32f2f;
+}
+
+.generated-steps {
+  margin-top: 1rem;
+}
+
+.generated-steps h3 {
+  color: var(--text-secondary);
+  margin-bottom: 0.75rem;
+}
+
+.generated-steps ol {
+  list-style: none;
+  counter-reset: step-counter;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.step-item {
+  counter-increment: step-counter;
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  gap: 1rem;
+  padding: 0.75rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  align-items: center;
+}
+
+.step-item::before {
+  content: counter(step-counter);
+  background: var(--primary);
+  color: #fff;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.step-item.step-started {
+  border-color: #9c27b0;
+  background: rgba(156, 39, 176, 0.05);
+}
+
+.step-item.step-completed {
+  border-color: #4caf50;
+  background: rgba(76, 175, 80, 0.05);
+}
+
+.step-item.step-failed {
+  border-color: #f44336;
+  background: rgba(244, 67, 54, 0.05);
+}
+
+.step-item.step-skipped {
+  border-color: #ff9800;
+  background: rgba(255, 152, 0, 0.05);
+}
+
+.step-action {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.step-target {
+  color: var(--text-muted);
+  font-family: 'Courier New', monospace;
+  font-size: 0.875rem;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
+.step-status {
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+}
+
+.status-started {
+  color: #9c27b0;
+}
+
+.status-completed {
+  color: #4caf50;
+}
+
+.status-failed {
+  color: #f44336;
+}
+
+.status-skipped {
+  color: #ff9800;
 }

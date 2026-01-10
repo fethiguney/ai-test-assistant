@@ -26,6 +26,7 @@ export type TestStepAction =
   | "scroll";
 
 export interface TestStep {
+  id?: string; // Optional ID for tracking
   action: TestStepAction | string; // string for extensibility
   target?: string;
   value?: string;

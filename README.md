@@ -6,7 +6,9 @@ AI-powered test automation assistant that converts natural language test scenari
 
 - **Natural Language to Test Steps**: Convert manual test scenarios to structured test steps
 - **Multi-LLM Support**: Ollama (local), Groq (cloud/free), and more
-- **Human-in-the-Loop**: Step-by-step execution with manual intervention
+- **Human-in-the-Loop**: WebSocket-based step-by-step approval with real-time updates
+- **Dual Execution Modes**: API (automatic) or WebSocket (manual approval)
+- **MCP Integration**: Model Context Protocol for flexible test execution
 - **Modular Architecture**: Clean, extensible, SOLID-compliant codebase
 
 ## 📁 Project Structure
@@ -63,6 +65,7 @@ export GROQ_API_KEY="your_groq_api_key"
 ### Running
 
 **Backend (Terminal 1):**
+
 ```bash
 cd backend
 npm run dev
@@ -70,6 +73,7 @@ npm run dev
 ```
 
 **Frontend (Terminal 2):**
+
 ```bash
 cd frontend
 npm run dev
@@ -83,23 +87,66 @@ Open `http://localhost:3000` in your browser!
 Access the web interface at `http://localhost:3000`
 
 Features:
+
 - Natural language test prompt input
-- LLM provider selection
+- LLM provider selection (Groq, Ollama)
+- MCP client selection (Playwright)
+- **Execution Mode Switcher**:
+  - **API Mode**: Automatic test generation and execution
+  - **WebSocket Mode**: Human-in-Loop with step-by-step approval
 - Real-time test generation & execution
-- Beautiful results display
+- Interactive step approval UI (WebSocket mode)
+- Beautiful results display with execution details
 - Dark theme
+
+### Human-in-Loop Mode
+
+Switch to WebSocket mode for step-by-step control:
+
+1. Toggle to "WebSocket (Human-in-Loop)" mode
+2. Enter your test scenario and submit
+3. Review each generated step before execution
+4. Approve, reject, or modify steps individually
+5. Monitor real-time execution progress
+6. See detailed results for each step
+
+See [Human-in-Loop Documentation](./docs/HUMAN-IN-LOOP.md) for more details.
 
 ## 📡 API Endpoints
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/health` | Health check |
-| GET | `/api/status` | Full system status |
-| POST | `/api/test/run` | **Dynamic test run** (generate + execute) |
-| GET | `/api/llm/providers` | List LLM providers |
-| POST | `/api/llm/providers/active` | Set active provider |
-| POST | `/api/test/generate-steps` | Generate test steps |
-| POST | `/api/test/execute-steps` | Execute test steps |
+### HTTP REST API
+
+| Method | Endpoint                       | Description                               |
+| ------ | ------------------------------ | ----------------------------------------- |
+| GET    | `/health`                      | Health check                              |
+| GET    | `/api/status`                  | Full system status                        |
+| POST   | `/api/test/run`                | **Dynamic test run** (generate + execute) |
+| GET    | `/api/llm/providers`           | List LLM providers                        |
+| POST   | `/api/llm/providers/active`    | Set active provider                       |
+| POST   | `/api/test/generate-steps`     | Generate test steps                       |
+| POST   | `/api/test/execute-steps`      | Execute test steps                        |
+| GET    | `/api/test/mcp/clients`        | List MCP clients                          |
+| POST   | `/api/test/mcp/clients/active` | Set active MCP client                     |
+
+### WebSocket Events
+
+**Server → Client:**
+
+- `session:created` - New test session started
+- `steps:generated` - Test steps generated from scenario
+- `step:approval_request` - Requesting approval for next step
+- `step:execution_update` - Real-time execution progress
+- `session:status` - Session state changes
+- `session:completed` - All steps completed
+- `error` - Error occurred
+
+**Client → Server:**
+
+- `test:start` - Start new test session
+- `step:approval` - Approve/reject step
+- `session:cancel` - Cancel active session
+
+Connection: `ws://localhost:3001`
 
 ## 🧪 Example: Generate Test Steps
 
@@ -112,12 +159,17 @@ curl -X POST http://localhost:3001/api/test/generate-steps \
 ```
 
 **Response:**
+
 ```json
 {
   "steps": [
     { "action": "goto", "target": "https://example.com/login" },
     { "action": "fill", "target": "#username", "value": "tomsmith" },
-    { "action": "fill", "target": "#password", "value": "SuperSecretPassword!" },
+    {
+      "action": "fill",
+      "target": "#password",
+      "value": "SuperSecretPassword!"
+    },
     { "action": "click", "target": "button[type=submit]" },
     { "action": "expectVisible", "target": "#flash" }
   ],
@@ -142,8 +194,12 @@ curl -X POST http://localhost:3001/api/test/generate-steps \
 ```typescript
 // 1. Create provider in llm/providers/
 class NewProvider extends BaseLLMProvider {
-  async healthCheck(): Promise<boolean> { /* ... */ }
-  async chat(messages, options): Promise<LLMResponse> { /* ... */ }
+  async healthCheck(): Promise<boolean> {
+    /* ... */
+  }
+  async chat(messages, options): Promise<LLMResponse> {
+    /* ... */
+  }
 }
 
 // 2. Register in llm-manager.ts
