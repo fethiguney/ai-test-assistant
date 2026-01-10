@@ -10,10 +10,43 @@ import { TestStep, TestStepResult, DynamicTestRunRequest, DynamicTestRunResponse
 class WebSocketTestOrchestrator {
   private testGenerator: TestGeneratorService;
   private stepExecutor: StepExecutorService;
+  private sessionExecutors: Map<string, StepExecutorService> = new Map();
 
   constructor() {
     this.testGenerator = new TestGeneratorService(llmManager);
     this.stepExecutor = new StepExecutorService();
+  }
+
+  /**
+   * Create a persistent executor for a session (keeps browser open)
+   */
+  createSessionExecutor(sessionId: string): StepExecutorService {
+    const executor = new StepExecutorService();
+    executor.enablePersistentBrowser();
+    this.sessionExecutors.set(sessionId, executor);
+    return executor;
+  }
+
+  /**
+   * Get or create session executor
+   */
+  getSessionExecutor(sessionId: string): StepExecutorService {
+    let executor = this.sessionExecutors.get(sessionId);
+    if (!executor) {
+      executor = this.createSessionExecutor(sessionId);
+    }
+    return executor;
+  }
+
+  /**
+   * Close session executor and cleanup
+   */
+  async closeSessionExecutor(sessionId: string): Promise<void> {
+    const executor = this.sessionExecutors.get(sessionId);
+    if (executor) {
+      await executor.closeBrowser();
+      this.sessionExecutors.delete(sessionId);
+    }
   }
 
   /**
@@ -31,8 +64,30 @@ class WebSocketTestOrchestrator {
 
   /**
    * Execute a single step
+   * For human-in-loop mode with sessionId, uses persistent browser
    */
-  async executeStep(step: TestStep, mcpClient?: string): Promise<TestStepResult> {
+  async executeStep(
+    step: TestStep,
+    mcpClient?: string,
+    options?: { browser?: string; headless?: boolean; sessionId?: string }
+  ): Promise<TestStepResult> {
+    // For human-in-loop with sessionId, always use direct execution with persistent browser
+    if (options?.sessionId) {
+      const executor = this.getSessionExecutor(options.sessionId);
+      const result = await executor.execute({
+        steps: [step],
+        browser: options?.browser as any,
+        options: {
+          headless: options?.headless ?? false,
+        },
+      });
+      if (!result.steps || result.steps.length === 0) {
+        throw new Error('No results returned from step executor');
+      }
+      return result.steps[0];
+    }
+    
+    // For non-human-in-loop mode, use MCP if specified
     if (mcpClient) {
       // Use MCP client
       const client = mcpManager.getClient(mcpClient as any);
@@ -47,7 +102,13 @@ class WebSocketTestOrchestrator {
       return response.steps[0];
     } else {
       // Use direct Playwright execution
-      const result = await this.stepExecutor.execute({ steps: [step] });
+      const result = await this.stepExecutor.execute({
+        steps: [step],
+        browser: options?.browser as any,
+        options: {
+          headless: options?.headless,
+        },
+      });
       if (!result.steps || result.steps.length === 0) {
         throw new Error('No results returned from step executor');
       }

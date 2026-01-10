@@ -51,11 +51,11 @@ export class PlaywrightMCPClient extends BaseMCPClient {
 
       // Try to create MCP connection using official package
       try {
-        // Create an in-process MCP connection with headless browser
+        // Create an in-process MCP connection with visible browser
         this.mcpConnection = await createConnection({
           browser: {
             launchOptions: {
-              headless: true,
+              headless: false, // Set to false to see the browser
             },
           },
         });

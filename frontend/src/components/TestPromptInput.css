@@ -86,3 +86,16 @@ button[type="submit"]:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+.info-message {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0.75rem;
+  color: var(--text-secondary, #888);
+}
+
+.info-message small {
+  font-size: 0.85rem;
+  font-style: italic;
+}

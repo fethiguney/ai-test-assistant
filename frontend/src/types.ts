@@ -1,3 +1,13 @@
+// ============================================
+// Browser Types
+// ============================================
+
+export type BrowserType = 'chromium' | 'firefox' | 'webkit';
+
+// ============================================
+// Test Step Types
+// ============================================
+
 export interface TestStep {
   id: string
   action: string
@@ -93,6 +103,12 @@ export interface StartTestRequest {
   mcpClient?: string
   humanInLoop: boolean
   approvalTimeoutSeconds?: number
+  browser?: BrowserType
+  executionOptions?: {
+    headless?: boolean
+    timeout?: number
+    screenshot?: boolean
+  }
 }
 
 export enum ServerEvents {

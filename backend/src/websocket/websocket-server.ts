@@ -60,9 +60,9 @@ export class WebSocketServer {
       });
 
       // Handle session cancellation
-      socket.on(ClientEvents.CANCEL_SESSION, (sessionId: string) => {
+      socket.on(ClientEvents.CANCEL_SESSION, async (sessionId: string) => {
         try {
-          this.handleCancelSession(sessionId);
+          await this.handleCancelSession(sessionId);
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
           socket.emit(ServerEvents.ERROR, {
@@ -113,7 +113,8 @@ export class WebSocketServer {
       await this.runTestWithApproval(
         socketId,
         session,
-        request.approvalTimeoutSeconds || 0
+        request.approvalTimeoutSeconds || 0,
+        request.browser || 'chromium'
       );
     } else {
       // Run without approval (just like the API endpoint)
@@ -124,7 +125,8 @@ export class WebSocketServer {
   private async runTestWithApproval(
     socketId: string,
     session: TestSession,
-    approvalTimeoutSeconds: number
+    approvalTimeoutSeconds: number,
+    browser: string = 'chromium'
   ): Promise<void> {
     try {
       // Generate steps
@@ -202,7 +204,12 @@ export class WebSocketServer {
 
           const result = await testOrchestrator.executeStep(
             stepToExecute,
-            session.mcpClient
+            undefined, // Don't use MCP for human-in-loop
+            {
+              browser,
+              headless: false, // Always visible for human-in-loop
+              sessionId: session.sessionId, // Pass sessionId for persistent browser
+            }
           );
 
           session.results.push(result);
@@ -248,6 +255,9 @@ export class WebSocketServer {
         message: 'Test execution failed',
         error: errorMessage,
       });
+    } finally {
+      // Close the persistent browser for this session
+      await testOrchestrator.closeSessionExecutor(session.sessionId);
     }
   }
 
@@ -294,12 +304,14 @@ export class WebSocketServer {
     }
   }
 
-  private handleCancelSession(sessionId: string): void {
+  private async handleCancelSession(sessionId: string): Promise<void> {
     const session = this.activeSessions.get(sessionId);
     if (session) {
       session.state = 'cancelled';
       approvalManager.cancelSession(sessionId);
       this.activeSessions.delete(sessionId);
+      // Close the persistent browser for this session
+      await testOrchestrator.closeSessionExecutor(sessionId);
       console.log(`[WebSocket] Session cancelled: ${sessionId}`);
     }
   }

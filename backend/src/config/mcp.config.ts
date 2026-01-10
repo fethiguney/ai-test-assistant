@@ -57,7 +57,7 @@ export const defaultMCPConfig: MCPServerConfig = {
     browserName: 'chromium',
     isolated: false,
     launchOptions: {
-      headless: true,
+      headless: false, // Set to false to see the browser
       timeout: 30000,
     },
     contextOptions: {

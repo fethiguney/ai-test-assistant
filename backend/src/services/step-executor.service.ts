@@ -4,17 +4,48 @@
  * Single Responsibility: Execute test steps using Playwright
  */
 
-import { chromium, Browser, Page, expect } from "@playwright/test";
+import {
+  chromium,
+  firefox,
+  webkit,
+  Browser,
+  Page,
+  expect,
+} from "@playwright/test";
 import {
   TestStep,
   TestStepResult,
   TestExecutionResult,
   TestExecutionRequest,
+  BrowserType,
 } from "../types/index.js";
 
 export class StepExecutorService {
   private browser: Browser | null = null;
   private page: Page | null = null;
+  private persistBrowser: boolean = false;
+
+  /**
+   * Enable persistent browser mode - browser stays open between execute() calls
+   * Useful for human-in-loop testing where steps are executed one by one
+   */
+  enablePersistentBrowser(): void {
+    this.persistBrowser = true;
+  }
+
+  /**
+   * Disable persistent browser mode
+   */
+  disablePersistentBrowser(): void {
+    this.persistBrowser = false;
+  }
+
+  /**
+   * Check if browser is currently open
+   */
+  isBrowserOpen(): boolean {
+    return this.browser !== null && this.page !== null;
+  }
 
   async execute(request: TestExecutionRequest): Promise<TestExecutionResult> {
     const startTime = Date.now();
@@ -22,8 +53,14 @@ export class StepExecutorService {
     let overallStatus: TestExecutionResult["status"] = "passed";
 
     try {
-      // Launch browser
-      await this.launchBrowser(request.options?.headless ?? true);
+      // Extract browser type from request options (default to chromium)
+      const browserType = request.browser || "chromium";
+      const headless = request.options?.headless ?? false; // Default to visible browser
+
+      // Launch browser only if not already open
+      if (!this.isBrowserOpen()) {
+        await this.launchBrowser(browserType, headless);
+      }
 
       // Execute each step
       for (const step of request.steps) {
@@ -39,7 +76,10 @@ export class StepExecutorService {
       overallStatus = "error";
       console.error("[StepExecutor] Fatal error:", error);
     } finally {
-      await this.cleanup();
+      // Only cleanup if not in persistent mode
+      if (!this.persistBrowser) {
+        await this.cleanup();
+      }
     }
 
     return {
@@ -53,8 +93,25 @@ export class StepExecutorService {
     };
   }
 
-  private async launchBrowser(headless: boolean): Promise<void> {
-    this.browser = await chromium.launch({ headless });
+  private async launchBrowser(
+    browserType: BrowserType,
+    headless: boolean
+  ): Promise<void> {
+    // Select and launch the appropriate browser
+    switch (browserType) {
+      case "chromium":
+        this.browser = await chromium.launch({ headless });
+        break;
+      case "firefox":
+        this.browser = await firefox.launch({ headless });
+        break;
+      case "webkit":
+        this.browser = await webkit.launch({ headless });
+        break;
+      default:
+        throw new Error(`Unsupported browser type: ${browserType}`);
+    }
+
     this.page = await this.browser.newPage();
   }
 
@@ -194,6 +251,13 @@ export class StepExecutorService {
       default:
         throw new Error(`Unsupported action: ${step.action}`);
     }
+  }
+
+  /**
+   * Manually close the browser (for persistent mode)
+   */
+  async closeBrowser(): Promise<void> {
+    await this.cleanup();
   }
 
   private async cleanup(): Promise<void> {

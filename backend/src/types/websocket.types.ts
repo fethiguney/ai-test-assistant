@@ -1,7 +1,7 @@
 /**
  * WebSocket Types - Human-in-Loop approval types
  */
-import { TestStep, TestStepResult } from './test.types.js';
+import { TestStep, TestStepResult, BrowserType } from './test.types.js';
 
 /**
  * Approval status for a test step
@@ -105,6 +105,7 @@ export interface StartTestRequest {
   mcpClient?: string;
   humanInLoop: boolean;
   approvalTimeoutSeconds?: number;
+  browser?: BrowserType;
 }
 
 /**

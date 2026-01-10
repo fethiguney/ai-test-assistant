@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { BrowserType } from "../types";
 import "./TestPromptInput.css";
 
 interface Props {
@@ -6,21 +7,28 @@ interface Props {
     prompt: string,
     llmProvider: string,
     mcpClient: string,
-    executeImmediately: boolean
+    executeImmediately: boolean,
+    browser: BrowserType,
+    headless: boolean
   ) => void;
   loading: boolean;
+  mode: "api" | "websocket";
 }
 
-export default function TestPromptInput({ onSubmit, loading }: Props) {
+export default function TestPromptInput({ onSubmit, loading, mode }: Props) {
   const [prompt, setPrompt] = useState("");
   const [llmProvider, setLlmProvider] = useState("auto");
   const [mcpClient, setMcpClient] = useState("playwright");
   const [executeImmediately, setExecuteImmediately] = useState(false);
+  const [browser, setBrowser] = useState<BrowserType>("chromium");
+  const [headless, setHeadless] = useState(true);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!prompt.trim()) return;
-    onSubmit(prompt, llmProvider, mcpClient, executeImmediately);
+    // In websocket mode, always use headless: false
+    const effectiveHeadless = mode === "websocket" ? false : headless;
+    onSubmit(prompt, llmProvider, mcpClient, executeImmediately, browser, effectiveHeadless);
   };
 
   return (
@@ -65,6 +73,42 @@ export default function TestPromptInput({ onSubmit, loading }: Props) {
               <option value="direct">Direct - Playwright</option>
               <option value="appium">MCP - Appium (Coming Soon)</option>
             </select>
+          </div>
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label htmlFor="browser">Browser</label>
+            <select
+              id="browser"
+              value={browser}
+              onChange={(e) => setBrowser(e.target.value as BrowserType)}
+              disabled={loading}
+            >
+              <option value="chromium">Chrome / Chromium</option>
+              <option value="firefox">Firefox</option>
+              <option value="webkit">WebKit (Safari)</option>
+            </select>
+          </div>
+
+          <div className="form-group">
+            {mode === "api" ? (
+              <div className="checkbox-group">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={!headless}
+                    onChange={(e) => setHeadless(!e.target.checked)}
+                    disabled={loading}
+                  />
+                  Show browser window
+                </label>
+              </div>
+            ) : (
+              <div className="info-message">
+                <small>Browser always visible in Human-in-Loop mode</small>
+              </div>
+            )}
           </div>
         </div>
 

@@ -11,6 +11,7 @@ import {
   TestStep,
   TestStepResult,
   SessionState,
+  BrowserType,
 } from "./types";
 import "./App.css";
 
@@ -81,7 +82,9 @@ function App() {
     prompt: string,
     llmProvider: string,
     mcpClient: string,
-    executeImmediately: boolean
+    executeImmediately: boolean,
+    browser: BrowserType,
+    headless: boolean
   ) => {
     if (mode === "websocket") {
       // Use WebSocket with human-in-loop
@@ -99,6 +102,11 @@ function App() {
         mcpClient: mcpClient || undefined,
         humanInLoop: true,
         approvalTimeoutSeconds: 300, // 5 minutes
+        browser,
+        executionOptions: {
+          headless: false, // Always visible in human-in-loop mode
+          screenshot: true,
+        },
       });
     } else {
       // Use API (existing behavior)
@@ -114,6 +122,11 @@ function App() {
             llmProvider: llmProvider === "auto" ? undefined : llmProvider,
             mcpClient,
             executeImmediately,
+            browser,
+            executionOptions: {
+              headless,
+              screenshot: true,
+            },
           }),
         });
 
@@ -213,6 +226,7 @@ function App() {
               ? loading
               : sessionState !== "idle" && sessionState !== "completed"
           }
+          mode={mode}
         />
 
         {/* WebSocket Mode - Approval UI */}

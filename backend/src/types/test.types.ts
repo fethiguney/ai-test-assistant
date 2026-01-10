@@ -6,6 +6,12 @@
 import { LLMProviderType } from "./llm.types.js";
 
 // ============================================
+// Browser Types
+// ============================================
+
+export type BrowserType = 'chromium' | 'firefox' | 'webkit';
+
+// ============================================
 // Test Step Types
 // ============================================
 
@@ -91,6 +97,7 @@ export interface TestExecutionResult {
 export interface TestExecutionRequest {
   steps: TestStep[];
   scenario?: string;
+  browser?: BrowserType;
   options?: {
     headless?: boolean;
     baseUrl?: string;
@@ -113,6 +120,7 @@ export interface DynamicTestRunRequest {
     headless?: boolean;
     timeout?: number;
     screenshot?: boolean;
+    browser?: BrowserType;
   };
 }
 
