@@ -82,8 +82,11 @@ app.listen(PORT, () => {
 ║    POST /api/llm/chat             Chat completion          ║
 ╠════════════════════════════════════════════════════════════╣
 ║  Test:                                                     ║
+║    POST /api/test/run             Dynamic prompt → test    ║
 ║    POST /api/test/generate-steps  Generate test steps      ║
 ║    POST /api/test/execute-steps   Execute with Playwright  ║
+║    GET  /api/test/mcp/clients     List MCP clients         ║
+║    POST /api/test/mcp/clients/active Set active MCP client║
 ║    POST /api/test/validate-steps  Validate steps format    ║
 ╚════════════════════════════════════════════════════════════╝
   `);

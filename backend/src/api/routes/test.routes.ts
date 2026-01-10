@@ -6,13 +6,17 @@
 import { Router, Request, Response } from 'express';
 import { asyncHandler, validators, LLMError } from '../middleware/index.js';
 import { llmManager } from '../../llm/index.js';
+import { mcpManager } from '../../mcp/index.js';
 import { 
   createTestGeneratorService, 
-  createStepExecutorService 
+  createStepExecutorService,
+  createTestOrchestratorService
 } from '../../services/index.js';
 import { 
   TestGenerationRequest, 
-  TestExecutionRequest 
+  TestExecutionRequest,
+  DynamicTestRunRequest,
+  MCPClientType
 } from '../../types/index.js';
 
 const router = Router();
@@ -20,6 +24,39 @@ const router = Router();
 // Create services with DI
 const testGenerator = createTestGeneratorService(llmManager);
 const stepExecutor = createStepExecutorService();
+const testOrchestrator = createTestOrchestratorService(llmManager, mcpManager);
+
+/**
+ * POST /api/test/run
+ * Dynamic test run from user prompt
+ * - Generates steps from prompt
+ * - Optionally executes immediately
+ * - Supports LLM provider selection
+ */
+router.post(
+  '/run',
+  validators.dynamicTestRun,
+  asyncHandler(async (req: Request, res: Response) => {
+    const request = req.body as DynamicTestRunRequest;
+
+    console.log('[TestRoutes] Dynamic test run:', 
+      request.prompt.substring(0, 100) + '...'
+    );
+
+    try {
+      const result = await testOrchestrator.runDynamicTest(request);
+      
+      console.log(`[TestRoutes] Test run ${result.id} completed - Status: ${result.status}`);
+      
+      res.json(result);
+    } catch (error) {
+      throw new LLMError(
+        error instanceof Error ? error.message : 'Dynamic test run failed',
+        llmManager.getActiveProviderType() || undefined
+      );
+    }
+  })
+);
 
 /**
  * POST /api/test/generate-steps
@@ -101,6 +138,47 @@ router.post('/validate-steps', asyncHandler(async (req: Request, res: Response) 
     errors: errors.length > 0 ? errors : undefined,
     stepCount: steps.length,
   });
+}));
+
+/**
+ * GET /api/test/mcp/clients
+ * List available MCP clients
+ */
+router.get('/mcp/clients', (_req: Request, res: Response) => {
+  const summary = mcpManager.getSummary();
+  res.json(summary);
+});
+
+/**
+ * GET /api/test/mcp/clients/health
+ * Check health of all MCP clients
+ */
+router.get('/mcp/clients/health', asyncHandler(async (_req: Request, res: Response) => {
+  const statuses = await mcpManager.checkAllClients();
+  res.json({ clients: statuses });
+}));
+
+/**
+ * POST /api/test/mcp/clients/active
+ * Set active MCP client
+ */
+router.post('/mcp/clients/active', asyncHandler(async (req: Request, res: Response) => {
+  const { client } = req.body as { client: MCPClientType };
+  
+  if (!client) {
+    return res.status(400).json({ error: 'Client type is required' });
+  }
+
+  const success = mcpManager.setActiveClient(client);
+  
+  if (success) {
+    res.json({
+      message: `Active MCP client set to ${client}`,
+      activeClient: client,
+    });
+  } else {
+    res.status(400).json({ error: `MCP client ${client} not found` });
+  }
 }));
 
 export { router as testRoutes };

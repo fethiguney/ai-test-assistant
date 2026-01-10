@@ -11,3 +11,8 @@ export {
   StepExecutorService,
   createStepExecutorService,
 } from './step-executor.service.js';
+
+export {
+  TestOrchestratorService,
+  createTestOrchestratorService,
+} from './test-orchestrator.service.js';

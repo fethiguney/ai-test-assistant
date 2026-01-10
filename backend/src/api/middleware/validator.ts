@@ -72,6 +72,26 @@ export const schemas = {
       screenshot: z.boolean().optional(),
     }).optional(),
   }),
+
+  // Dynamic test run
+  dynamicTestRun: z.object({
+    prompt: z.string().min(1, 'Test prompt is required'),
+    llmProvider: z.enum(['ollama', 'groq', 'openai', 'anthropic', 'google']).optional(),
+    mcpClient: z.enum(['direct', 'playwright', 'appium']).optional(),
+    context: z.object({
+      pageType: z.string().optional(),
+      allowedActions: z.array(z.string()).optional(),
+      allowedElements: z.array(z.string()).optional(),
+      baseUrl: z.string().url().optional(),
+      customInstructions: z.string().optional(),
+    }).optional(),
+    executeImmediately: z.boolean().optional(),
+    executionOptions: z.object({
+      headless: z.boolean().optional(),
+      timeout: z.number().positive().optional(),
+      screenshot: z.boolean().optional(),
+    }).optional(),
+  }),
 };
 
 // ============================================
@@ -117,4 +137,5 @@ export const validators = {
   chat: validate(schemas.chat),
   generateTestSteps: validate(schemas.generateTestSteps),
   executeTestSteps: validate(schemas.executeTestSteps),
+  dynamicTestRun: validate(schemas.dynamicTestRun),
 };

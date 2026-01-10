@@ -39,36 +39,55 @@ ai-test-assistant-poc/
 ### Installation
 
 ```bash
+# Backend
 cd backend
+npm install
+
+# Frontend
+cd ../frontend
 npm install
 ```
 
 ### Configuration
 
-Create a `.env` file in the `backend/` directory:
+Set environment variable for Groq (or use Ollama locally):
 
-```env
-# Groq (recommended - faster)
-GROQ_API_KEY=your_groq_api_key
+```bash
+# Windows PowerShell
+$env:GROQ_API_KEY="your_groq_api_key"
 
-# Or use Ollama (local)
-OLLAMA_BASE_URL=http://localhost:11434
-
-# Server
-PORT=3001
+# Linux/Mac
+export GROQ_API_KEY="your_groq_api_key"
 ```
 
 ### Running
 
+**Backend (Terminal 1):**
 ```bash
 cd backend
-
-# Development mode (with hot reload)
 npm run dev
-
-# Or run tests
-npm run test:llm
+# Runs on http://localhost:3001
 ```
+
+**Frontend (Terminal 2):**
+```bash
+cd frontend
+npm run dev
+# Runs on http://localhost:3000
+```
+
+Open `http://localhost:3000` in your browser!
+
+## 🎨 Frontend UI
+
+Access the web interface at `http://localhost:3000`
+
+Features:
+- Natural language test prompt input
+- LLM provider selection
+- Real-time test generation & execution
+- Beautiful results display
+- Dark theme
 
 ## 📡 API Endpoints
 
@@ -76,12 +95,11 @@ npm run test:llm
 |--------|----------|-------------|
 | GET | `/health` | Health check |
 | GET | `/api/status` | Full system status |
+| POST | `/api/test/run` | **Dynamic test run** (generate + execute) |
 | GET | `/api/llm/providers` | List LLM providers |
-| GET | `/api/llm/providers/health` | Check provider health |
 | POST | `/api/llm/providers/active` | Set active provider |
-| POST | `/api/llm/generate` | Text generation |
-| POST | `/api/llm/chat` | Chat completion |
-| POST | `/api/test/generate-steps` | **Generate test steps** |
+| POST | `/api/test/generate-steps` | Generate test steps |
+| POST | `/api/test/execute-steps` | Execute test steps |
 
 ## 🧪 Example: Generate Test Steps
 
