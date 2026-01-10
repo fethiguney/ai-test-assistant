@@ -1,8 +1,8 @@
-import { useState } from 'react'
-import TestPromptInput from './components/TestPromptInput'
-import TestResults from './components/TestResults'
-import { StepApproval } from './components/StepApproval'
-import { useWebSocket } from './hooks/useWebSocket'
+import { useState } from "react";
+import TestPromptInput from "./components/TestPromptInput";
+import TestResults from "./components/TestResults";
+import { StepApproval } from "./components/StepApproval";
+import { useWebSocket } from "./hooks/useWebSocket";
 import {
   DynamicTestRunResponse,
   StepApprovalRequest,
@@ -11,64 +11,71 @@ import {
   TestStep,
   TestStepResult,
   SessionState,
-} from './types'
-import './App.css'
+} from "./types";
+import "./App.css";
 
-type ExecutionMode = 'api' | 'websocket'
+type ExecutionMode = "api" | "websocket";
 
 function App() {
   // API-based state
-  const [result, setResult] = useState<DynamicTestRunResponse | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [result, setResult] = useState<DynamicTestRunResponse | null>(null);
+  const [loading, setLoading] = useState(false);
 
   // Execution mode
-  const [mode, setMode] = useState<ExecutionMode>('api')
+  const [mode, setMode] = useState<ExecutionMode>("api");
 
   // WebSocket-based state
-  const [sessionState, setSessionState] = useState<SessionState>('idle')
-  const [generatedSteps, setGeneratedSteps] = useState<TestStep[]>([])
-  const [currentApprovalRequest, setCurrentApprovalRequest] = useState<StepApprovalRequest | null>(null)
-  const [executionResults, setExecutionResults] = useState<TestStepResult[]>([])
-  const [stepUpdates, setStepUpdates] = useState<Map<number, StepExecutionUpdate>>(new Map())
+  const [sessionState, setSessionState] = useState<SessionState>("idle");
+  const [generatedSteps, setGeneratedSteps] = useState<TestStep[]>([]);
+  const [currentApprovalRequest, setCurrentApprovalRequest] =
+    useState<StepApprovalRequest | null>(null);
+  const [executionResults, setExecutionResults] = useState<TestStepResult[]>(
+    []
+  );
+  const [stepUpdates, setStepUpdates] = useState<
+    Map<number, StepExecutionUpdate>
+  >(new Map());
 
-  const { isConnected, currentSessionId, startTest, approveStep, cancelSession } = useWebSocket({
+  const {
+    isConnected,
+    currentSessionId,
+    startTest,
+    approveStep,
+    cancelSession,
+  } = useWebSocket({
     onStepsGenerated: (steps: TestStep[]) => {
-      console.log('Steps generated:', steps)
-      setGeneratedSteps(steps)
+      console.log("Steps generated:", steps);
+      setGeneratedSteps(steps);
     },
     onApprovalRequest: (request: StepApprovalRequest) => {
-      console.log('Approval request:', request)
-      setCurrentApprovalRequest(request)
+      console.log("Approval request:", request);
+      setCurrentApprovalRequest(request);
     },
     onStepUpdate: (update: StepExecutionUpdate) => {
-      console.log('Step update:', update)
-      setStepUpdates((prev) => new Map(prev).set(update.stepIndex, update))
+      console.log("Step update:", update);
+      setStepUpdates((prev) => new Map(prev).set(update.stepIndex, update));
       if (update.result) {
-        setExecutionResults((prev) => [...prev, update.result!])
+        setExecutionResults((prev) => [...prev, update.result!]);
       }
     },
     onSessionStatus: (status: SessionStatusUpdate) => {
-      console.log('Session status:', status)
-      setSessionState(status.state)
+      console.log("Session status:", status);
+      setSessionState(status.state);
     },
     onSessionCompleted: (data: any) => {
-      console.log('Session completed:', data)
-      setSessionState('completed')
-      setCurrentApprovalRequest(null)
-      setLoading(false) // Ensure loading is false
-      
-      // Reset to idle after a short delay to allow user to see results
-      setTimeout(() => {
-        setSessionState('idle')
-      }, 2000)
+      console.log("Session completed:", data);
+      setSessionState("completed");
+      setCurrentApprovalRequest(null);
+      setLoading(false); // Ensure loading is false
+      // Keep results visible (no auto-reset to idle, like API mode)
     },
     onError: (error: any) => {
-      console.error('WebSocket error:', error)
-      alert(`Error: ${error.message || 'Unknown error'}`)
-      setSessionState('idle') // Reset on error
-      setLoading(false) // Ensure loading is false
+      console.error("WebSocket error:", error);
+      alert(`Error: ${error.message || "Unknown error"}`);
+      setSessionState("idle"); // Reset on error
+      setLoading(false); // Ensure loading is false
     },
-  })
+  });
 
   const handleTestRun = async (
     prompt: string,
@@ -76,89 +83,91 @@ function App() {
     mcpClient: string,
     executeImmediately: boolean
   ) => {
-    if (mode === 'websocket') {
+    if (mode === "websocket") {
       // Use WebSocket with human-in-loop
-      setLoading(false) // Ensure loading is false for WebSocket mode
-      setSessionState('generating')
-      setGeneratedSteps([])
-      setCurrentApprovalRequest(null)
-      setExecutionResults([])
-      setStepUpdates(new Map())
+      // Clear previous results when starting a new test
+      setLoading(false); // Ensure loading is false for WebSocket mode
+      setSessionState("generating");
+      setGeneratedSteps([]);
+      setCurrentApprovalRequest(null);
+      setExecutionResults([]);
+      setStepUpdates(new Map());
 
       startTest({
         scenario: prompt,
-        llmProvider: llmProvider === 'auto' ? undefined : llmProvider,
+        llmProvider: llmProvider === "auto" ? undefined : llmProvider,
         mcpClient: mcpClient || undefined,
         humanInLoop: true,
         approvalTimeoutSeconds: 300, // 5 minutes
-      })
+      });
     } else {
       // Use API (existing behavior)
-      setLoading(true)
-      setResult(null)
+      setLoading(true);
+      setResult(null);
 
       try {
-        const response = await fetch('/api/test/run', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const response = await fetch("/api/test/run", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             prompt,
-            llmProvider: llmProvider === 'auto' ? undefined : llmProvider,
+            llmProvider: llmProvider === "auto" ? undefined : llmProvider,
             mcpClient,
             executeImmediately,
           }),
-        })
+        });
 
         if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.message || `HTTP ${response.status}`)
+          const errorData = await response.json();
+          throw new Error(errorData.message || `HTTP ${response.status}`);
         }
 
-        const data = await response.json()
-        setResult(data)
+        const data = await response.json();
+        setResult(data);
       } catch (error) {
-        console.error('Test run failed:', error)
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-        alert(`Failed to run test: ${errorMessage}`)
+        console.error("Test run failed:", error);
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error";
+        alert(`Failed to run test: ${errorMessage}`);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
-  }
+  };
 
   const handleApprove = (modifiedStep?: TestStep) => {
-    if (!currentApprovalRequest || !currentSessionId) return
+    if (!currentApprovalRequest || !currentSessionId) return;
 
     approveStep({
       sessionId: currentSessionId,
       stepIndex: currentApprovalRequest.stepIndex,
       approved: true,
       modifiedStep,
-    })
+    });
 
-    setCurrentApprovalRequest(null)
-  }
+    setCurrentApprovalRequest(null);
+  };
 
   const handleReject = (reason: string) => {
-    if (!currentApprovalRequest || !currentSessionId) return
+    if (!currentApprovalRequest || !currentSessionId) return;
 
     approveStep({
       sessionId: currentSessionId,
       stepIndex: currentApprovalRequest.stepIndex,
       approved: false,
       reason,
-    })
+    });
 
-    setCurrentApprovalRequest(null)
-  }
+    setCurrentApprovalRequest(null);
+  };
 
   const handleCancel = () => {
     if (currentSessionId) {
-      cancelSession(currentSessionId)
-      setSessionState('cancelled')
-      setCurrentApprovalRequest(null)
+      cancelSession(currentSessionId);
+      setSessionState("cancelled");
+      setCurrentApprovalRequest(null);
     }
-  }
+  };
 
   return (
     <div className="app">
@@ -170,23 +179,27 @@ function App() {
           <label>Execution Mode:</label>
           <div className="mode-buttons">
             <button
-              onClick={() => setMode('api')}
-              className={`mode-btn ${mode === 'api' ? 'active' : ''}`}
-              disabled={loading || sessionState !== 'idle'}
+              onClick={() => setMode("api")}
+              className={`mode-btn ${mode === "api" ? "active" : ""}`}
+              disabled={loading || sessionState !== "idle"}
             >
               API (Automatic)
             </button>
             <button
-              onClick={() => setMode('websocket')}
-              className={`mode-btn ${mode === 'websocket' ? 'active' : ''}`}
-              disabled={loading || sessionState !== 'idle'}
+              onClick={() => setMode("websocket")}
+              className={`mode-btn ${mode === "websocket" ? "active" : ""}`}
+              disabled={loading || sessionState !== "idle"}
             >
               WebSocket (Human-in-Loop)
             </button>
           </div>
-          {mode === 'websocket' && (
-            <span className={`connection-status ${isConnected ? 'connected' : 'disconnected'}`}>
-              {isConnected ? '● Connected' : '○ Disconnected'}
+          {mode === "websocket" && (
+            <span
+              className={`connection-status ${
+                isConnected ? "connected" : "disconnected"
+              }`}
+            >
+              {isConnected ? "● Connected" : "○ Disconnected"}
             </span>
           )}
         </div>
@@ -195,11 +208,15 @@ function App() {
       <main className="app-main">
         <TestPromptInput
           onSubmit={handleTestRun}
-          loading={mode === 'api' ? loading : sessionState !== 'idle' && sessionState !== 'completed'}
+          loading={
+            mode === "api"
+              ? loading
+              : sessionState !== "idle" && sessionState !== "completed"
+          }
         />
 
         {/* WebSocket Mode - Approval UI */}
-        {mode === 'websocket' && currentApprovalRequest && (
+        {mode === "websocket" && currentApprovalRequest && (
           <StepApproval
             request={currentApprovalRequest}
             onApprove={handleApprove}
@@ -208,105 +225,157 @@ function App() {
         )}
 
         {/* WebSocket Mode - Session Status */}
-        {mode === 'websocket' && currentSessionId && (
-          <div className="session-status">
-            <div className="session-info">
-              <span className="session-id">Session: {currentSessionId}</span>
-              <span className={`session-state state-${sessionState}`}>
-                {sessionState.toUpperCase()}
-              </span>
-              {sessionState !== 'idle' && sessionState !== 'completed' && sessionState !== 'cancelled' && (
-                <button onClick={handleCancel} className="btn-cancel">
-                  Cancel Session
-                </button>
+        {mode === "websocket" &&
+          (currentSessionId ||
+            sessionState === "completed" ||
+            sessionState === "cancelled") && (
+            <div className="session-status">
+              <div className="session-info">
+                {currentSessionId && (
+                  <span className="session-id">
+                    Session: {currentSessionId}
+                  </span>
+                )}
+                <span className={`session-state state-${sessionState}`}>
+                  {sessionState.toUpperCase()}
+                </span>
+                {sessionState !== "idle" &&
+                  sessionState !== "completed" &&
+                  sessionState !== "cancelled" && (
+                    <button onClick={handleCancel} className="btn-cancel">
+                      Cancel Session
+                    </button>
+                  )}
+              </div>
+
+              {generatedSteps.length > 0 && (
+                <div className="generated-steps">
+                  <h3>Generated Steps ({generatedSteps.length}):</h3>
+                  <ol>
+                    {generatedSteps.map((step, idx) => {
+                      const update = stepUpdates.get(idx);
+                      return (
+                        <li
+                          key={idx}
+                          className={`step-item ${
+                            update ? `step-${update.status}` : ""
+                          }`}
+                        >
+                          <span className="step-action">{step.action}</span>
+                          {step.target && (
+                            <code className="step-target">{step.target}</code>
+                          )}
+                          {update && (
+                            <span
+                              className={`step-status status-${update.status}`}
+                            >
+                              {update.status}
+                            </span>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </div>
               )}
-            </div>
 
-            {generatedSteps.length > 0 && (
-              <div className="generated-steps">
-                <h3>Generated Steps ({generatedSteps.length}):</h3>
-                <ol>
-                  {generatedSteps.map((step, idx) => {
-                    const update = stepUpdates.get(idx)
-                    return (
-                      <li key={idx} className={`step-item ${update ? `step-${update.status}` : ''}`}>
-                        <span className="step-action">{step.action}</span>
-                        {step.target && <code className="step-target">{step.target}</code>}
-                        {update && (
-                          <span className={`step-status status-${update.status}`}>
-                            {update.status}
-                          </span>
-                        )}
-                      </li>
-                    )
-                  })}
-                </ol>
-              </div>
-            )}
-
-            {/* WebSocket Mode - Execution Results (After Completion) */}
-            {(sessionState === 'completed' || sessionState === 'cancelled') && executionResults.length > 0 && (
-              <div className="websocket-results">
-                <h3>Execution Results</h3>
-                <div className="execution-summary">
-                  <div className="summary-stats">
-                    <span className="stat">
-                      Total Steps: {executionResults.length}
-                    </span>
-                    <span className="stat success">
-                      Passed: {executionResults.filter(r => r.status === 'passed').length}
-                    </span>
-                    <span className="stat failure">
-                      Failed: {executionResults.filter(r => r.status === 'failed').length}
-                    </span>
-                    <span className="stat skipped">
-                      Skipped: {executionResults.filter(r => r.status === 'skipped').length}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="execution-details">
-                  {executionResults.map((result, idx) => (
-                    <div key={idx} className={`result-item result-${result.status}`}>
-                      <div className="result-header">
-                        <span className="result-icon">
-                          {result.status === 'passed' ? '✅' : result.status === 'failed' ? '❌' : '⊘'}
+              {/* WebSocket Mode - Execution Results (After Completion) */}
+              {(sessionState === "completed" || sessionState === "cancelled") &&
+                executionResults.length > 0 && (
+                  <div className="websocket-results">
+                    <h3>Execution Results</h3>
+                    <div className="execution-summary">
+                      <div className="summary-stats">
+                        <span className="stat">
+                          Total Steps: {executionResults.length}
                         </span>
-                        <span className="result-action">{result.action}</span>
-                        <span className="result-duration">{result.duration}ms</span>
+                        <span className="stat success">
+                          Passed:{" "}
+                          {
+                            executionResults.filter(
+                              (r) => r.status === "passed"
+                            ).length
+                          }
+                        </span>
+                        <span className="stat failure">
+                          Failed:{" "}
+                          {
+                            executionResults.filter(
+                              (r) => r.status === "failed"
+                            ).length
+                          }
+                        </span>
+                        <span className="stat skipped">
+                          Skipped:{" "}
+                          {
+                            executionResults.filter(
+                              (r) => r.status === "skipped"
+                            ).length
+                          }
+                        </span>
                       </div>
-                      {result.message && (
-                        <div className="result-message">{result.message}</div>
-                      )}
-                      {result.error && (
-                        <div className="result-error">Error: {result.error}</div>
-                      )}
-                      {result.screenshot && (
-                        <div className="result-screenshot">
-                          <img src={`data:image/png;base64,${result.screenshot}`} alt="Screenshot" />
-                        </div>
-                      )}
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+
+                    <div className="execution-details">
+                      {executionResults.map((result, idx) => (
+                        <div
+                          key={idx}
+                          className={`result-item result-${result.status}`}
+                        >
+                          <div className="result-header">
+                            <span className="result-icon">
+                              {result.status === "passed"
+                                ? "✅"
+                                : result.status === "failed"
+                                ? "❌"
+                                : "⊘"}
+                            </span>
+                            <span className="result-action">
+                              {result.action}
+                            </span>
+                            <span className="result-duration">
+                              {result.duration}ms
+                            </span>
+                          </div>
+                          {result.message && (
+                            <div className="result-message">
+                              {result.message}
+                            </div>
+                          )}
+                          {result.error && (
+                            <div className="result-error">
+                              Error: {result.error}
+                            </div>
+                          )}
+                          {result.screenshot && (
+                            <div className="result-screenshot">
+                              <img
+                                src={`data:image/png;base64,${result.screenshot}`}
+                                alt="Screenshot"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+            </div>
+          )}
 
         {/* API Mode - Results */}
-        {mode === 'api' && result && <TestResults result={result} />}
+        {mode === "api" && result && <TestResults result={result} />}
       </main>
 
       <footer className="app-footer">
         <p>
-          {mode === 'api'
-            ? 'API Mode: Automatic execution with LLM + MCP'
-            : 'WebSocket Mode: Human-in-the-loop approval for each step'}
+          {mode === "api"
+            ? "API Mode: Automatic execution with LLM + MCP"
+            : "WebSocket Mode: Human-in-the-loop approval for each step"}
         </p>
       </footer>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
