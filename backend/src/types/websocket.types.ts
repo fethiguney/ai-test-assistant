@@ -59,10 +59,8 @@ export interface StepApprovalResponse {
  */
 export interface SnapshotCapturedNotification {
   sessionId: string;
-  url: string;
-  title: string;
-  timestamp: Date;
-  summary?: SnapshotSummary; // Include summary if approval enabled
+  stepIndex?: number; // Optional step index
+  snapshot: PageSnapshot; // Include full snapshot for display
 }
 
 /**
@@ -144,8 +142,8 @@ export interface StartTestRequest {
   humanInLoop: boolean;
   approvalTimeoutSeconds?: number;
   browser?: BrowserType;
-  enableIterativeGeneration?: boolean; // Enable page-aware iterative generation
-  snapshotApprovalRequired?: boolean; // Require approval for snapshots (human-in-loop only)
+  enablePageAwareGeneration?: boolean; // Enable page-aware iterative generation (matches frontend)
+  showSnapshotsForApproval?: boolean; // Show snapshots for approval (matches frontend)
 }
 
 /**

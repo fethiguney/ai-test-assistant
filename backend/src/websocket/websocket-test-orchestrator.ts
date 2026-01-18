@@ -177,6 +177,7 @@ class WebSocketTestOrchestrator {
       onStepGenerated?: (step: TestStep, snapshot?: PageSnapshot) => Promise<boolean>;
       onStepExecuted?: (result: TestStepResult) => Promise<void>;
       onSnapshotCaptured?: (snapshot: PageSnapshot) => Promise<void>;
+      onSnapshotApproval?: (snapshot: PageSnapshot) => Promise<boolean>;
     }
   ): Promise<{
     sessionId: string;
@@ -218,10 +219,11 @@ class WebSocketTestOrchestrator {
 
         try {
           // Check if this intention requires navigation
-          const needsNavigation = this.isNavigationIntention(intention) || i === 0;
+          const isNavigation = this.isNavigationIntention(intention);
+          const needsNavigation = isNavigation || i === 0;
 
-          // If navigation is needed and we don't have a snapshot, generate and execute navigation step
-          if (needsNavigation && !currentPageSnapshot) {
+          // If this is a navigation intention OR we don't have a page snapshot yet, navigate first
+          if (needsNavigation || (!currentPageSnapshot && !isNavigation)) {
             console.log('[IterativeTest] Generating navigation step...');
             
             // Generate navigation step without page context
@@ -271,8 +273,19 @@ class WebSocketTestOrchestrator {
             currentPageSnapshot = await this.capturePageSnapshot(executor);
             console.log(`[IterativeTest] Captured snapshot: ${currentPageSnapshot.elements.length} elements`);
 
+            // Notify about snapshot capture
             if (options.onSnapshotCaptured) {
               await options.onSnapshotCaptured(currentPageSnapshot);
+            }
+
+            // Request snapshot approval if callback provided
+            if (options.onSnapshotApproval) {
+              const snapshotApproved = await options.onSnapshotApproval(currentPageSnapshot);
+              if (!snapshotApproved) {
+                console.log('[IterativeTest] Snapshot rejected by user');
+                status = 'cancelled';
+                break;
+              }
             }
 
             // If this was only navigation, continue to next intention
@@ -282,9 +295,18 @@ class WebSocketTestOrchestrator {
           }
 
           // Generate concrete step with page context
+          // CRITICAL: For non-navigation steps, we MUST have a page snapshot to avoid hallucination
+          if (!currentPageSnapshot) {
+            console.error('[IterativeTest] ERROR: Attempting to generate step without page snapshot!');
+            throw new Error(`Cannot generate step for "${intention}" without page snapshot. Navigate to a page first.`);
+          }
+
           console.log('[IterativeTest] Generating step with page context...');
+          console.log(`[IterativeTest] Snapshot has ${currentPageSnapshot.elements.length} elements available`);
+          
+          // Include full scenario context to help LLM extract specific values
           const stepRequest: IterativeStepRequest = {
-            scenario: intention,
+            scenario: `${intention}. Full test scenario: ${scenario}`,
             previousSteps: executedSteps,
             currentPageSnapshot,
             requiresPageContext: true,
@@ -329,14 +351,31 @@ class WebSocketTestOrchestrator {
           if (this.isPageChangingAction(step.action)) {
             console.log('[IterativeTest] Page-changing action detected, capturing new snapshot...');
             
-            // Wait a bit for page to settle
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // Wait longer for page to settle after navigation
+            await new Promise(resolve => setTimeout(resolve, 2000));
             
-            currentPageSnapshot = await this.capturePageSnapshot(executor);
-            console.log(`[IterativeTest] Captured new snapshot: ${currentPageSnapshot.elements.length} elements`);
+            try {
+              currentPageSnapshot = await this.capturePageSnapshot(executor);
+              console.log(`[IterativeTest] Captured new snapshot: ${currentPageSnapshot.elements.length} elements`);
 
-            if (options.onSnapshotCaptured) {
-              await options.onSnapshotCaptured(currentPageSnapshot);
+              // Notify about snapshot capture
+              if (options.onSnapshotCaptured) {
+                await options.onSnapshotCaptured(currentPageSnapshot);
+              }
+
+              // Request snapshot approval if callback provided
+              if (options.onSnapshotApproval) {
+                const snapshotApproved = await options.onSnapshotApproval(currentPageSnapshot);
+                if (!snapshotApproved) {
+                  console.log('[IterativeTest] Snapshot rejected by user');
+                  status = 'cancelled';
+                  break;
+                }
+              }
+            } catch (error) {
+              console.error('[IterativeTest] Failed to capture snapshot after page change:', error);
+              // Continue without snapshot - next step generation will handle it
+              currentPageSnapshot = undefined;
             }
           }
 
@@ -442,6 +481,12 @@ class WebSocketTestOrchestrator {
       const elements = await page.evaluate(`(() => {
         const results = [];
         
+        // Helper to check if a string is safe for CSS selector
+        function isSafeCSSClass(className) {
+          // Avoid classes with special chars that need escaping (Tailwind, etc)
+          return !/[:\/\[\]@!#]/.test(className);
+        }
+        
         // Helper to generate selector
         function generateSelector(el) {
           // Priority 1: data-testid
@@ -464,15 +509,29 @@ class WebSocketTestOrchestrator {
             return '[name="' + el.getAttribute('name') + '"]';
           }
           
-          // Priority 5: class (first class only)
+          // Priority 5: text content for buttons/links (more reliable than classes)
+          var text = (el.textContent || '').trim();
+          if ((el.tagName === 'BUTTON' || el.tagName === 'A' || el.getAttribute('role') === 'button') && text.length > 0 && text.length < 50) {
+            // Use text-based selector for buttons with short text
+            return 'text="' + text + '"';
+          }
+          
+          // Priority 6: class (first SAFE class only)
           if (el.className && typeof el.className === 'string') {
-            const classes = el.className.split(' ').filter(function(c) { return c.length > 0; });
+            var classes = el.className.split(' ').filter(function(c) { 
+              return c.length > 0 && isSafeCSSClass(c); 
+            });
             if (classes.length > 0) {
               return '.' + classes[0];
             }
           }
           
-          // Fallback: tag name
+          // Fallback: tag name with role if available
+          if (el.hasAttribute('role')) {
+            return el.tagName.toLowerCase() + '[role="' + el.getAttribute('role') + '"]';
+          }
+          
+          // Last resort: tag name
           return el.tagName.toLowerCase();
         }
 

@@ -141,14 +141,15 @@ Now break down the following scenario into abstract intentions:`;
     const systemPrompt = this.buildIterativePrompt(request.currentPageSnapshot);
 
     // Build user prompt with context
-    let userPrompt = `SCENARIO: ${request.scenario}\n\n`;
+    let userPrompt = `CURRENT INTENTION: ${request.scenario}\n\n`;
+    userPrompt += `FULL SCENARIO CONTEXT: This is part of a larger test scenario. Extract any specific values (URLs, search terms, etc.) from the intention.\n\n`;
 
     if (request.previousSteps.length > 0) {
       userPrompt += `PREVIOUS STEPS COMPLETED:\n`;
       request.previousSteps.forEach((step, i) => {
         userPrompt += `${i + 1}. ${step.action}${
           step.target ? ` ${step.target}` : ""
-        }${step.description ? ` - ${step.description}` : ""}\n`;
+        }${step.value ? ` value="${step.value}"` : ""}${step.description ? ` - ${step.description}` : ""}\n`;
       });
       userPrompt += "\n";
     }
@@ -186,20 +187,26 @@ Now break down the following scenario into abstract intentions:`;
     const basePrompt = `You are an expert QA automation engineer.
 Generate a SINGLE concrete test step based on the current page context.
 
-STRICT RULES:
+CRITICAL RULES - MUST FOLLOW:
 1. Return ONLY ONE step as a JSON object - no explanations, no markdown
 2. Use these actions: goto, fill, click, hover, select, check, expectVisible, expectText, expectUrl, wait
 3. The step must have: action (required), target (selector/url), value (for inputs), description (human readable)
 4. For navigation intentions (navigate, go to, open, visit, load, browse), ALWAYS use "goto" action with the full URL as the target
 5. Extract the actual URL from the scenario context - do NOT make up URLs
-6. ALWAYS use selectors from the provided page elements when available
-7. Prioritize accessible selectors in this order:
-   a) data-testid attribute
-   b) role + aria-label combination
-   c) role + accessible name
-   d) id attribute
-   e) text content (for buttons/links)
-   f) CSS selectors as last resort`;
+
+SELECTOR RULES - EXTREMELY IMPORTANT:
+6. You MUST ONLY use selectors from the "AVAILABLE INTERACTIVE ELEMENTS" list below
+7. DO NOT create, guess, or hallucinate selectors - ONLY use what is provided
+8. If you cannot find a suitable element in the list, return an error step
+9. Copy the exact selector string from the element list - do NOT modify it
+10. Never invent placeholder selectors like "#searchbox", ".search-input", etc.
+11. Selectors may be in different formats:
+    - Attribute: [data-testid="..."], [aria-label="..."], [name="..."]
+    - ID: #elementId
+    - Text: text="Button Text" (for buttons/links)
+    - Class: .className (only safe classes without special chars)
+    - Tag+Role: button[role="button"]
+12. ALWAYS prefer text="..." selectors for buttons with visible text`;
 
     const parts = [basePrompt];
 
@@ -212,7 +219,12 @@ EXAMPLE OUTPUT (single step as JSON object):
 {"action":"click","target":"button[role=button][aria-label='Sign in']","description":"Click sign in button"}
 
 OR if returning an array with one element:
-[{"action":"fill","target":"#email","value":"test@example.com","description":"Enter email address"}]`;
+[{"action":"fill","target":"#email","value":"test@example.com","description":"Enter email address"}]
+
+IMPORTANT REMINDERS:
+- Only use selectors that appear in the AVAILABLE INTERACTIVE ELEMENTS section
+- Copy the exact selector string, do not modify it
+- If no suitable element exists, return: {"action":"error","description":"Cannot find required element on page"}`;
 
     parts.push(example);
     parts.push(

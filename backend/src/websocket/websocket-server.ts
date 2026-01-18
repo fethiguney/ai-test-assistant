@@ -131,8 +131,8 @@ export class WebSocketServer {
         session,
         request.approvalTimeoutSeconds || 0,
         request.browser || 'chromium',
-        request.enableIterativeGeneration || false,
-        request.snapshotApprovalRequired || false
+        request.enablePageAwareGeneration || false,
+        request.showSnapshotsForApproval || false
       );
     } else {
       // Run without approval (just like the API endpoint)
@@ -145,23 +145,29 @@ export class WebSocketServer {
     session: TestSession,
     approvalTimeoutSeconds: number,
     browser: string = 'chromium',
-    enableIterativeGeneration: boolean = false,
-    snapshotApprovalRequired: boolean = false
+    enablePageAwareGeneration: boolean = false,
+    showSnapshotsForApproval: boolean = false
   ): Promise<void> {
     try {
-      // If iterative generation is enabled, use the iterative flow
-      if (enableIterativeGeneration) {
+      // If page-aware iterative generation is enabled, use the iterative flow
+      if (enablePageAwareGeneration) {
+        console.log(`[WebSocket] ✅ USING ITERATIVE GENERATION (Page-Aware Mode)`);
+        console.log(`[WebSocket]    - Prevents locator hallucination`);
+        console.log(`[WebSocket]    - Generates steps based on actual page elements`);
         await this.runIterativeTestWithApproval(
           socketId,
           session,
           approvalTimeoutSeconds,
           browser,
-          snapshotApprovalRequired
+          showSnapshotsForApproval
         );
         return;
       }
 
       // Otherwise, use the traditional flow
+      console.log(`[WebSocket] ⚠️  USING BATCH GENERATION (Traditional Mode)`);
+      console.log(`[WebSocket]    - May hallucinate locators before visiting pages`);
+      console.log(`[WebSocket]    - Consider enabling "Page-Aware Generation" for better accuracy`);
       // Generate steps
       session.state = 'generating';
       this.updateSessionStatus(socketId, session);
@@ -299,61 +305,117 @@ export class WebSocketServer {
     session: TestSession,
     approvalTimeoutSeconds: number,
     browser: string = 'chromium',
-    snapshotApprovalRequired: boolean = false
+    showSnapshotsForApproval: boolean = false
   ): Promise<void> {
     try {
       session.state = 'generating';
       this.updateSessionStatus(socketId, session);
 
-      // TODO: Call the iterative test orchestrator when implemented
-      // This method will be fully implemented once the iterative orchestrator is ready
-      // For now, log that iterative mode was requested
-      console.log(`[WebSocket] Iterative generation mode requested for session ${session.sessionId}`);
-      console.log(`[WebSocket] Snapshot approval required: ${snapshotApprovalRequired}`);
+      console.log(`[WebSocket] Starting iterative generation for session ${session.sessionId}`);
+      console.log(`[WebSocket] Show snapshots for approval: ${showSnapshotsForApproval}`);
 
-      // Placeholder: Fall back to traditional flow for now
-      // Once the iterative orchestrator is implemented, we'll call:
-      // const result = await testOrchestrator.runIterativeTest(
-      //   session.scenario,
-      //   session.llmProvider,
-      //   {
-      //     browser,
-      //     headless: false,
-      //     sessionId: session.sessionId,
-      //     snapshotApprovalRequired,
-      //     approvalTimeoutSeconds,
-      //     onSnapshotCaptured: (notification) => {
-      //       this.emitSnapshotCaptured(socketId, notification);
-      //     },
-      //     onSnapshotApprovalRequest: async (request) => {
-      //       this.emitSnapshotApprovalRequest(socketId, request);
-      //       return await approvalManager.requestSnapshotApproval(
-      //         session.sessionId,
-      //         request.stepIndex,
-      //         approvalTimeoutSeconds * 1000
-      //       );
-      //     },
-      //     onStepApprovalRequest: async (request) => {
-      //       this.io.to(socketId).emit(ServerEvents.STEP_APPROVAL_REQUEST, request);
-      //       return await approvalManager.requestApproval(
-      //         session.sessionId,
-      //         request.stepIndex,
-      //         approvalTimeoutSeconds * 1000
-      //       );
-      //     },
-      //     onStepExecutionUpdate: (update) => {
-      //       this.io.to(socketId).emit(ServerEvents.STEP_EXECUTION_UPDATE, update);
-      //     },
-      //   }
-      // );
+      // Run the iterative test with callbacks for approval
+      const result = await testOrchestrator.runIterativeTest(
+        session.scenario,
+        {
+          sessionId: session.sessionId,
+          llmProvider: session.llmProvider,
+          browser,
+          headless: false, // Always visible for human-in-loop
+          
+          // Callback when a step is generated (request approval)
+          onStepGenerated: async (step, snapshot) => {
+            const stepIndex = session.steps.length;
+            session.steps.push(step);
+            session.totalSteps = session.steps.length;
+            
+            // Emit step approval request
+            const approvalRequest: StepApprovalRequest = {
+              sessionId: session.sessionId,
+              stepIndex,
+              totalSteps: session.totalSteps,
+              step,
+              previousResults: session.results,
+              timeoutSeconds: approvalTimeoutSeconds,
+            };
 
-      this.io.to(socketId).emit(ServerEvents.ERROR, {
+            this.io.to(socketId).emit(ServerEvents.STEP_APPROVAL_REQUEST, approvalRequest);
+
+            // Wait for user approval
+            const approval = await approvalManager.requestApproval(
+              session.sessionId,
+              stepIndex,
+              approvalTimeoutSeconds * 1000
+            );
+
+            return approval.approved;
+          },
+
+          // Callback when a step is executed
+          onStepExecuted: async (stepResult) => {
+            const stepIndex = session.results.length;
+            session.results.push(stepResult);
+
+            this.io.to(socketId).emit(ServerEvents.STEP_EXECUTION_UPDATE, {
+              sessionId: session.sessionId,
+              stepIndex,
+              status: stepResult.status === 'passed' ? 'completed' : 'failed',
+              result: stepResult,
+            });
+          },
+
+          // Callback when a snapshot is captured (notification only)
+          onSnapshotCaptured: async (snapshot) => {
+            const notification: SnapshotCapturedNotification = {
+              sessionId: session.sessionId,
+              stepIndex: session.steps.length,
+              snapshot,
+            };
+            this.io.to(socketId).emit(ServerEvents.SNAPSHOT_CAPTURED, notification);
+          },
+
+          // Callback for snapshot approval (if required)
+          onSnapshotApproval: showSnapshotsForApproval ? async (snapshot) => {
+            const stepIndex = session.steps.length;
+            
+            // Create page inspection service to generate summary
+            const { PageInspectionService } = await import('../services/page-inspection.service.js');
+            const pageInspection = new PageInspectionService();
+            const summary = pageInspection.createSummary(snapshot);
+            
+            const approvalRequest: SnapshotApprovalRequest = {
+              sessionId: session.sessionId,
+              stepIndex,
+              snapshot,
+              summary,
+              timeoutSeconds: approvalTimeoutSeconds,
+            };
+
+            this.io.to(socketId).emit(ServerEvents.SNAPSHOT_APPROVAL_REQUEST, approvalRequest);
+
+            // Wait for user approval
+            const approval = await approvalManager.requestSnapshotApproval(
+              session.sessionId,
+              stepIndex,
+              approvalTimeoutSeconds * 1000
+            );
+
+            return approval.approved;
+          } : undefined,
+        }
+      );
+
+      // Update session with final results
+      session.state = result.status === 'completed' ? 'completed' : 'cancelled';
+      session.completedAt = new Date();
+      
+      this.io.to(socketId).emit(ServerEvents.SESSION_COMPLETED, {
         sessionId: session.sessionId,
-        message: 'Iterative generation not yet implemented',
-        error: 'The iterative orchestrator is still under development. Please use traditional mode.',
+        results: session.results,
+        status: result.status,
+        intentions: result.intentions,
       });
 
-      session.state = 'cancelled';
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       session.state = 'cancelled';
