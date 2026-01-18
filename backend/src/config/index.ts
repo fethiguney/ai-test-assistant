@@ -3,6 +3,11 @@
  * All environment variables and app config in one place
  */
 
+import { config as dotenvConfig } from 'dotenv';
+
+// Load environment variables from .env file
+dotenvConfig();
+
 export interface AppConfig {
   server: {
     port: number;
@@ -20,6 +25,11 @@ export interface AppConfig {
       timeout: number;
     };
     defaultProvider: 'ollama' | 'groq';
+  };
+  testing: {
+    enableIterativeGeneration: boolean;
+    snapshotApprovalRequired: boolean;
+    snapshotAfterActions: string[];
   };
 }
 
@@ -41,6 +51,11 @@ function loadConfig(): AppConfig {
         timeout: parseInt(process.env.GROQ_TIMEOUT || '30000', 10),
       },
       defaultProvider: (process.env.DEFAULT_LLM_PROVIDER as 'ollama' | 'groq') || 'ollama',
+    },
+    testing: {
+      enableIterativeGeneration: process.env.ENABLE_ITERATIVE_GENERATION !== 'false',
+      snapshotApprovalRequired: process.env.SNAPSHOT_APPROVAL_REQUIRED === 'true',
+      snapshotAfterActions: (process.env.SNAPSHOT_AFTER_ACTIONS || 'click,fill,press,select').split(','),
     },
   };
 }

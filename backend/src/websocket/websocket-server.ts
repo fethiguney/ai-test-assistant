@@ -10,6 +10,9 @@ import {
   StepApprovalResponse,
   TestSession,
   StepApprovalRequest,
+  SnapshotCapturedNotification,
+  SnapshotApprovalRequest,
+  SnapshotApprovalResponse,
 } from '../types/index.js';
 import { approvalManager } from '../services/approval-manager.service.js';
 import { testOrchestrator } from './websocket-test-orchestrator.js';
@@ -54,6 +57,19 @@ export class WebSocketServer {
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
           socket.emit(ServerEvents.ERROR, {
             message: 'Failed to process approval',
+            error: errorMessage,
+          });
+        }
+      });
+
+      // Handle snapshot approval
+      socket.on(ClientEvents.SNAPSHOT_APPROVAL, (response: SnapshotApprovalResponse) => {
+        try {
+          this.handleSnapshotApproval(response);
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          socket.emit(ServerEvents.ERROR, {
+            message: 'Failed to process snapshot approval',
             error: errorMessage,
           });
         }
@@ -114,7 +130,9 @@ export class WebSocketServer {
         socketId,
         session,
         request.approvalTimeoutSeconds || 0,
-        request.browser || 'chromium'
+        request.browser || 'chromium',
+        request.enableIterativeGeneration || false,
+        request.snapshotApprovalRequired || false
       );
     } else {
       // Run without approval (just like the API endpoint)
@@ -126,9 +144,24 @@ export class WebSocketServer {
     socketId: string,
     session: TestSession,
     approvalTimeoutSeconds: number,
-    browser: string = 'chromium'
+    browser: string = 'chromium',
+    enableIterativeGeneration: boolean = false,
+    snapshotApprovalRequired: boolean = false
   ): Promise<void> {
     try {
+      // If iterative generation is enabled, use the iterative flow
+      if (enableIterativeGeneration) {
+        await this.runIterativeTestWithApproval(
+          socketId,
+          session,
+          approvalTimeoutSeconds,
+          browser,
+          snapshotApprovalRequired
+        );
+        return;
+      }
+
+      // Otherwise, use the traditional flow
       // Generate steps
       session.state = 'generating';
       this.updateSessionStatus(socketId, session);
@@ -261,6 +294,79 @@ export class WebSocketServer {
     }
   }
 
+  private async runIterativeTestWithApproval(
+    socketId: string,
+    session: TestSession,
+    approvalTimeoutSeconds: number,
+    browser: string = 'chromium',
+    snapshotApprovalRequired: boolean = false
+  ): Promise<void> {
+    try {
+      session.state = 'generating';
+      this.updateSessionStatus(socketId, session);
+
+      // TODO: Call the iterative test orchestrator when implemented
+      // This method will be fully implemented once the iterative orchestrator is ready
+      // For now, log that iterative mode was requested
+      console.log(`[WebSocket] Iterative generation mode requested for session ${session.sessionId}`);
+      console.log(`[WebSocket] Snapshot approval required: ${snapshotApprovalRequired}`);
+
+      // Placeholder: Fall back to traditional flow for now
+      // Once the iterative orchestrator is implemented, we'll call:
+      // const result = await testOrchestrator.runIterativeTest(
+      //   session.scenario,
+      //   session.llmProvider,
+      //   {
+      //     browser,
+      //     headless: false,
+      //     sessionId: session.sessionId,
+      //     snapshotApprovalRequired,
+      //     approvalTimeoutSeconds,
+      //     onSnapshotCaptured: (notification) => {
+      //       this.emitSnapshotCaptured(socketId, notification);
+      //     },
+      //     onSnapshotApprovalRequest: async (request) => {
+      //       this.emitSnapshotApprovalRequest(socketId, request);
+      //       return await approvalManager.requestSnapshotApproval(
+      //         session.sessionId,
+      //         request.stepIndex,
+      //         approvalTimeoutSeconds * 1000
+      //       );
+      //     },
+      //     onStepApprovalRequest: async (request) => {
+      //       this.io.to(socketId).emit(ServerEvents.STEP_APPROVAL_REQUEST, request);
+      //       return await approvalManager.requestApproval(
+      //         session.sessionId,
+      //         request.stepIndex,
+      //         approvalTimeoutSeconds * 1000
+      //       );
+      //     },
+      //     onStepExecutionUpdate: (update) => {
+      //       this.io.to(socketId).emit(ServerEvents.STEP_EXECUTION_UPDATE, update);
+      //     },
+      //   }
+      // );
+
+      this.io.to(socketId).emit(ServerEvents.ERROR, {
+        sessionId: session.sessionId,
+        message: 'Iterative generation not yet implemented',
+        error: 'The iterative orchestrator is still under development. Please use traditional mode.',
+      });
+
+      session.state = 'cancelled';
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      session.state = 'cancelled';
+      this.io.to(socketId).emit(ServerEvents.ERROR, {
+        sessionId: session.sessionId,
+        message: 'Iterative test execution failed',
+        error: errorMessage,
+      });
+    } finally {
+      await testOrchestrator.closeSessionExecutor(session.sessionId);
+    }
+  }
+
   private async runTestWithoutApproval(
     socketId: string,
     session: TestSession
@@ -304,6 +410,15 @@ export class WebSocketServer {
     }
   }
 
+  private handleSnapshotApproval(response: SnapshotApprovalResponse): void {
+    const processed = approvalManager.respondToSnapshotApproval(response);
+    if (!processed) {
+      console.warn(
+        `[WebSocket] Received snapshot approval for unknown step: ${response.sessionId}:${response.stepIndex}`
+      );
+    }
+  }
+
   private async handleCancelSession(sessionId: string): Promise<void> {
     const session = this.activeSessions.get(sessionId);
     if (session) {
@@ -325,6 +440,20 @@ export class WebSocketServer {
 
   private generateSessionId(): string {
     return `session_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+  }
+
+  public emitSnapshotCaptured(
+    socketId: string,
+    notification: SnapshotCapturedNotification
+  ): void {
+    this.io.to(socketId).emit(ServerEvents.SNAPSHOT_CAPTURED, notification);
+  }
+
+  public emitSnapshotApprovalRequest(
+    socketId: string,
+    request: SnapshotApprovalRequest
+  ): void {
+    this.io.to(socketId).emit(ServerEvents.SNAPSHOT_APPROVAL_REQUEST, request);
   }
 
   public getIO(): SocketIOServer {

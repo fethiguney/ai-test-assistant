@@ -9,7 +9,9 @@ interface Props {
     mcpClient: string,
     executeImmediately: boolean,
     browser: BrowserType,
-    headless: boolean
+    headless: boolean,
+    enablePageAware: boolean,
+    showSnapshotsForApproval: boolean
   ) => void;
   loading: boolean;
   mode: "api" | "websocket";
@@ -22,13 +24,24 @@ export default function TestPromptInput({ onSubmit, loading, mode }: Props) {
   const [executeImmediately, setExecuteImmediately] = useState(false);
   const [browser, setBrowser] = useState<BrowserType>("chromium");
   const [headless, setHeadless] = useState(true);
+  const [enablePageAware, setEnablePageAware] = useState(true);
+  const [showSnapshotsForApproval, setShowSnapshotsForApproval] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!prompt.trim()) return;
     // In websocket mode, always use headless: false
     const effectiveHeadless = mode === "websocket" ? false : headless;
-    onSubmit(prompt, llmProvider, mcpClient, executeImmediately, browser, effectiveHeadless);
+    onSubmit(
+      prompt,
+      llmProvider,
+      mcpClient,
+      executeImmediately,
+      browser,
+      effectiveHeadless,
+      enablePageAware,
+      showSnapshotsForApproval
+    );
   };
 
   return (
@@ -122,6 +135,47 @@ export default function TestPromptInput({ onSubmit, loading, mode }: Props) {
             />
             Execute test immediately
           </label>
+        </div>
+
+        <div className="advanced-settings">
+          <h4 className="settings-header">Advanced Settings</h4>
+          
+          <div className="form-group checkbox-group">
+            <label>
+              <input
+                type="checkbox"
+                checked={enablePageAware}
+                onChange={(e) => setEnablePageAware(e.target.checked)}
+                disabled={loading}
+              />
+              Enable Page-Aware Generation
+              <span className="tooltip" title="Generate test steps based on actual page structure instead of LLM assumptions. Captures page snapshots to use real DOM elements and selectors, resulting in more accurate and reliable tests.">
+                ℹ️
+              </span>
+            </label>
+          </div>
+
+          {mode === "websocket" && (
+            <div className="form-group checkbox-group">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={showSnapshotsForApproval}
+                  onChange={(e) => setShowSnapshotsForApproval(e.target.checked)}
+                  disabled={loading || !enablePageAware}
+                />
+                Show snapshots for approval
+                <span className="tooltip" title="Display page snapshots during human-in-loop approval. Shows detected elements and selectors for each step, allowing you to verify the page context before execution.">
+                  ℹ️
+                </span>
+              </label>
+              {!enablePageAware && (
+                <small className="setting-note">
+                  (Requires page-aware generation)
+                </small>
+              )}
+            </div>
+          )}
         </div>
 
         <button type="submit" disabled={loading || !prompt.trim()}>

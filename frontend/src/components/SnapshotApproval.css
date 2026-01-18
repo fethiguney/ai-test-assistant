@@ -1,0 +1,373 @@
+.snapshot-approval {
+  background: #1e1e1e;
+  border: 2px solid #9c27b0;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: 1rem 0;
+  box-shadow: 0 4px 12px rgba(156, 39, 176, 0.2);
+}
+
+.snapshot-approval-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #333;
+}
+
+.snapshot-approval-header h3 {
+  margin: 0;
+  color: #9c27b0;
+  font-size: 1.2rem;
+}
+
+.expand-toggle {
+  background: transparent;
+  border: 1px solid #9c27b0;
+  color: #9c27b0;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.expand-toggle:hover:not(:disabled) {
+  background: #9c27b0;
+  color: #fff;
+}
+
+.expand-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.snapshot-approval-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+/* Page Info Section */
+.page-info {
+  background: #252525;
+  padding: 1rem;
+  border-radius: 6px;
+}
+
+.info-row {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 1rem;
+  padding: 0.5rem 0;
+  align-items: center;
+}
+
+.info-row label {
+  font-weight: 600;
+  color: #aaa;
+  font-size: 0.9rem;
+}
+
+.url-value {
+  color: #4a9eff;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+  word-break: break-all;
+}
+
+.title-value {
+  color: #fff;
+  font-size: 0.95rem;
+}
+
+.timestamp-value {
+  color: #ccc;
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+/* Elements Summary Section */
+.elements-summary {
+  background: #252525;
+  padding: 1rem;
+  border-radius: 6px;
+}
+
+.elements-summary h4 {
+  margin: 0 0 0.75rem 0;
+  color: #aaa;
+  font-size: 0.95rem;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #1e1e1e;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+}
+
+.summary-label {
+  color: #aaa;
+  font-size: 0.875rem;
+}
+
+.summary-count {
+  color: #9c27b0;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.total-elements {
+  color: #ccc;
+  font-size: 0.9rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #333;
+}
+
+.total-elements strong {
+  color: #9c27b0;
+}
+
+/* Suggested Selector Section */
+.suggested-selector {
+  background: #252525;
+  padding: 1rem;
+  border-radius: 6px;
+}
+
+.suggested-selector h4 {
+  margin: 0 0 0.75rem 0;
+  color: #aaa;
+  font-size: 0.95rem;
+}
+
+.next-action {
+  color: #4a9eff;
+  font-weight: normal;
+  font-style: italic;
+}
+
+.selector-section {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.selector-value {
+  flex: 1;
+  background: #1e1e1e;
+  padding: 0.75rem;
+  border-radius: 4px;
+  color: #4caf50;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+  word-break: break-all;
+  display: block;
+}
+
+.selector-input {
+  flex: 1;
+  padding: 0.75rem;
+  background: #1e1e1e;
+  border: 1px solid #9c27b0;
+  border-radius: 4px;
+  color: #fff;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+}
+
+.selector-input:focus {
+  outline: none;
+  border-color: #ba68c8;
+}
+
+.modify-btn {
+  padding: 0.5rem 1rem;
+  background: #9c27b0;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.modify-btn:hover:not(:disabled) {
+  background: #7b1fa2;
+}
+
+.modify-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Elements List Section */
+.elements-list {
+  background: #252525;
+  padding: 1rem;
+  border-radius: 6px;
+}
+
+.elements-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.elements-list-header h4 {
+  margin: 0;
+  color: #aaa;
+  font-size: 0.95rem;
+}
+
+.show-more-btn {
+  background: transparent;
+  border: 1px solid #666;
+  color: #aaa;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.2s;
+}
+
+.show-more-btn:hover:not(:disabled) {
+  border-color: #9c27b0;
+  color: #9c27b0;
+}
+
+.show-more-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.elements-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.elements-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.elements-container::-webkit-scrollbar-track {
+  background: #1e1e1e;
+  border-radius: 4px;
+}
+
+.elements-container::-webkit-scrollbar-thumb {
+  background: #666;
+  border-radius: 4px;
+}
+
+.elements-container::-webkit-scrollbar-thumb:hover {
+  background: #888;
+}
+
+.element-item {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: #1e1e1e;
+  border-radius: 4px;
+  align-items: flex-start;
+}
+
+.element-tag {
+  background: #9c27b0;
+  color: #fff;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  white-space: nowrap;
+  align-self: flex-start;
+}
+
+.element-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.element-selector {
+  color: #4a9eff;
+  font-family: 'Courier New', monospace;
+  font-size: 0.8rem;
+  word-break: break-all;
+  display: block;
+}
+
+.element-label {
+  color: #aaa;
+  font-size: 0.8rem;
+  font-style: italic;
+  word-break: break-word;
+}
+
+/* Action Buttons */
+.snapshot-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  padding-top: 1rem;
+  border-top: 1px solid #333;
+}
+
+.btn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-skip {
+  background: #ff9800;
+  color: #fff;
+}
+
+.btn-skip:hover:not(:disabled) {
+  background: #f57c00;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(255, 152, 0, 0.3);
+}
+
+.btn-approve {
+  background: #4caf50;
+  color: #fff;
+}
+
+.btn-approve:hover:not(:disabled) {
+  background: #388e3c;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+}

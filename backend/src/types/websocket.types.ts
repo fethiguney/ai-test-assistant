@@ -1,7 +1,7 @@
 /**
  * WebSocket Types - Human-in-Loop approval types
  */
-import { TestStep, TestStepResult, BrowserType } from './test.types.js';
+import { TestStep, TestStepResult, BrowserType, PageSnapshot, SnapshotSummary } from './test.types.js';
 
 /**
  * Approval status for a test step
@@ -55,6 +55,41 @@ export interface StepApprovalResponse {
 }
 
 /**
+ * Snapshot captured notification sent to client
+ */
+export interface SnapshotCapturedNotification {
+  sessionId: string;
+  url: string;
+  title: string;
+  timestamp: Date;
+  summary?: SnapshotSummary; // Include summary if approval enabled
+}
+
+/**
+ * Snapshot approval request sent to client
+ */
+export interface SnapshotApprovalRequest {
+  sessionId: string;
+  stepIndex: number;
+  snapshot: PageSnapshot;
+  summary: SnapshotSummary;
+  proposedStep?: TestStep; // The step that will be executed based on this snapshot
+  timeoutSeconds?: number;
+}
+
+/**
+ * Snapshot approval response from client
+ */
+export interface SnapshotApprovalResponse {
+  sessionId: string;
+  stepIndex: number;
+  approved: boolean;
+  modifiedSelector?: string; // Allow client to modify the selector
+  skipSnapshot?: boolean; // User can choose to skip snapshot-based validation
+  reason?: string;
+}
+
+/**
  * Step execution update sent to client
  */
 export interface StepExecutionUpdate {
@@ -84,6 +119,8 @@ export enum ServerEvents {
   STEP_APPROVAL_REQUEST = 'step:approval_request',
   STEP_EXECUTION_UPDATE = 'step:execution_update',
   SESSION_COMPLETED = 'session:completed',
+  SNAPSHOT_CAPTURED = 'snapshot:captured',
+  SNAPSHOT_APPROVAL_REQUEST = 'snapshot:approval_request',
   ERROR = 'error',
 }
 
@@ -93,6 +130,7 @@ export enum ServerEvents {
 export enum ClientEvents {
   START_TEST = 'test:start',
   STEP_APPROVAL = 'step:approval',
+  SNAPSHOT_APPROVAL = 'snapshot:approval',
   CANCEL_SESSION = 'session:cancel',
 }
 
@@ -106,6 +144,8 @@ export interface StartTestRequest {
   humanInLoop: boolean;
   approvalTimeoutSeconds?: number;
   browser?: BrowserType;
+  enableIterativeGeneration?: boolean; // Enable page-aware iterative generation
+  snapshotApprovalRequired?: boolean; // Require approval for snapshots (human-in-loop only)
 }
 
 /**

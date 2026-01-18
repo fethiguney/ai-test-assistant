@@ -84,7 +84,9 @@ function App() {
     mcpClient: string,
     executeImmediately: boolean,
     browser: BrowserType,
-    headless: boolean
+    headless: boolean,
+    enablePageAware: boolean,
+    showSnapshotsForApproval: boolean
   ) => {
     if (mode === "websocket") {
       // Use WebSocket with human-in-loop
@@ -103,6 +105,8 @@ function App() {
         humanInLoop: true,
         approvalTimeoutSeconds: 300, // 5 minutes
         browser,
+        enablePageAwareGeneration: enablePageAware,
+        showSnapshotsForApproval: showSnapshotsForApproval,
         executionOptions: {
           headless: false, // Always visible in human-in-loop mode
           screenshot: true,
@@ -123,6 +127,7 @@ function App() {
             mcpClient,
             executeImmediately,
             browser,
+            enablePageAwareGeneration: enablePageAware,
             executionOptions: {
               headless,
               screenshot: true,

@@ -18,6 +18,8 @@ import {
   TestExecutionResult,
   TestExecutionRequest,
   BrowserType,
+  PageSnapshot,
+  DOMElement,
 } from "../types/index.js";
 
 export class StepExecutorService {
@@ -45,6 +47,237 @@ export class StepExecutorService {
    */
   isBrowserOpen(): boolean {
     return this.browser !== null && this.page !== null;
+  }
+
+  /**
+   * Get the current page instance (for snapshot capture, etc.)
+   * Only available when browser is open
+   */
+  getCurrentPage(): Page | null {
+    return this.page;
+  }
+
+  /**
+   * Capture a page snapshot for iterative test generation
+   * Uses Playwright's DOM APIs to extract page structure
+   * 
+   * @returns PageSnapshot with URL, title, and extracted DOM elements
+   */
+  async capturePageSnapshot(): Promise<PageSnapshot> {
+    if (!this.page) {
+      throw new Error('Cannot capture snapshot: browser not initialized');
+    }
+
+    try {
+      // Get page metadata
+      const url = this.page.url();
+      const title = await this.page.title();
+
+      // Extract DOM elements from the page
+      const elements = await this.extractDOMElements(this.page);
+
+      return {
+        url,
+        title,
+        elements,
+        timestamp: new Date(),
+      };
+    } catch (error) {
+      console.error('[StepExecutor] Failed to capture page snapshot:', error);
+      throw new Error(`Snapshot capture failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Extract DOM elements from the page
+   * Focuses on interactive elements relevant for test generation
+   */
+  private async extractDOMElements(page: Page): Promise<DOMElement[]> {
+    const elements: DOMElement[] = [];
+
+    try {
+      // Extract interactive elements using Playwright's locator API
+      // We'll query for common interactive elements
+
+      // 1. Extract buttons
+      const buttons = await page.locator('button, [role="button"], input[type="button"], input[type="submit"]').all();
+      for (const button of buttons) {
+        const element = await this.createDOMElementFromLocator(button, 'button');
+        if (element) elements.push(element);
+      }
+
+      // 2. Extract input fields
+      const inputs = await page.locator('input:not([type="button"]):not([type="submit"]), textarea, [role="textbox"]').all();
+      for (const input of inputs) {
+        const element = await this.createDOMElementFromLocator(input, 'input');
+        if (element) elements.push(element);
+      }
+
+      // 3. Extract links
+      const links = await page.locator('a[href], [role="link"]').all();
+      for (const link of links) {
+        const element = await this.createDOMElementFromLocator(link, 'a');
+        if (element) elements.push(element);
+      }
+
+      // 4. Extract select/dropdown elements
+      const selects = await page.locator('select, [role="combobox"], [role="listbox"]').all();
+      for (const select of selects) {
+        const element = await this.createDOMElementFromLocator(select, 'select');
+        if (element) elements.push(element);
+      }
+
+      // 5. Extract checkboxes and radio buttons
+      const checkboxes = await page.locator('input[type="checkbox"], input[type="radio"], [role="checkbox"], [role="radio"]').all();
+      for (const checkbox of checkboxes) {
+        const element = await this.createDOMElementFromLocator(checkbox, 'input');
+        if (element) elements.push(element);
+      }
+
+      // 6. Extract headings for context
+      const headings = await page.locator('h1, h2, h3, h4, h5, h6').all();
+      for (const heading of headings) {
+        const element = await this.createDOMElementFromLocator(heading, 'heading');
+        if (element) elements.push(element);
+      }
+
+    } catch (error) {
+      console.error('[StepExecutor] Error extracting DOM elements:', error);
+    }
+
+    return elements;
+  }
+
+  /**
+   * Create a DOMElement from a Playwright locator
+   */
+  private async createDOMElementFromLocator(locator: any, fallbackTag: string): Promise<DOMElement | null> {
+    try {
+      // Get element properties
+      const tag = await locator.evaluate((el: HTMLElement) => el.tagName.toLowerCase()).catch(() => fallbackTag);
+      const text = await locator.textContent().catch(() => '');
+      const isVisible = await locator.isVisible().catch(() => false);
+
+      // Skip invisible elements
+      if (!isVisible) return null;
+
+      // Get attributes
+      const attributes: Record<string, string> = {};
+      const attrNames = ['id', 'class', 'name', 'type', 'value', 'placeholder', 'href', 'src', 'alt', 'data-testid', 'aria-label', 'aria-describedby'];
+      
+      for (const attrName of attrNames) {
+        try {
+          const value = await locator.getAttribute(attrName);
+          if (value) attributes[attrName] = value;
+        } catch {
+          // Attribute doesn't exist, skip
+        }
+      }
+
+      // Get role
+      const role = await locator.getAttribute('role').catch(() => null) || 
+                   await locator.evaluate((el: HTMLElement) => {
+                     // Map common tags to implicit roles
+                     const roleMap: Record<string, string> = {
+                       'button': 'button',
+                       'a': 'link',
+                       'input': el.getAttribute('type') === 'checkbox' ? 'checkbox' : 'textbox',
+                       'textarea': 'textbox',
+                       'select': 'combobox',
+                     };
+                     return roleMap[el.tagName.toLowerCase()] || '';
+                   }).catch(() => '');
+
+      // Generate optimal selector
+      const selector = this.generateOptimalSelector(attributes, tag, text, role);
+
+      const element: DOMElement = {
+        tag,
+        selector,
+        text: text?.trim() || undefined,
+        role: role || undefined,
+        ariaLabel: attributes['aria-label'] || undefined,
+        attributes,
+      };
+
+      return element;
+    } catch (error) {
+      // Failed to extract this element, skip it
+      return null;
+    }
+  }
+
+  /**
+   * Generate an optimal selector based on element properties
+   * Prioritizes accessible and stable selectors
+   */
+  private generateOptimalSelector(
+    attributes: Record<string, string>,
+    tag: string,
+    text: string | null,
+    role: string
+  ): string {
+    // Priority 1: data-testid (most stable)
+    if (attributes['data-testid']) {
+      return `[data-testid="${attributes['data-testid']}"]`;
+    }
+
+    // Priority 2: id (stable if not dynamic)
+    if (attributes['id'] && !attributes['id'].match(/\d{10,}/)) {
+      return `#${attributes['id']}`;
+    }
+
+    // Priority 3: aria-label (accessible)
+    if (attributes['aria-label']) {
+      return `[aria-label="${attributes['aria-label']}"]`;
+    }
+
+    // Priority 4: name attribute (for form elements)
+    if (attributes['name']) {
+      return `[name="${attributes['name']}"]`;
+    }
+
+    // Priority 5: placeholder (for inputs)
+    if (attributes['placeholder']) {
+      return `[placeholder="${attributes['placeholder']}"]`;
+    }
+
+    // Priority 6: role + text (for buttons/links)
+    if (role && text && text.trim().length > 0 && text.length < 50) {
+      const cleanText = text.trim().substring(0, 50);
+      if (role === 'button') {
+        return `button:has-text("${cleanText}")`;
+      } else if (role === 'link') {
+        return `a:has-text("${cleanText}")`;
+      }
+    }
+
+    // Priority 7: text content for interactive elements
+    if (text && text.trim().length > 0 && text.length < 50) {
+      const cleanText = text.trim();
+      if (tag === 'button' || tag === 'a') {
+        return `${tag}:has-text("${cleanText}")`;
+      }
+    }
+
+    // Priority 8: type attribute for inputs
+    if (tag === 'input' && attributes['type']) {
+      if (attributes['name']) {
+        return `input[type="${attributes['type']}"][name="${attributes['name']}"]`;
+      }
+      return `input[type="${attributes['type']}"]`;
+    }
+
+    // Priority 9: class (less stable but common)
+    if (attributes['class']) {
+      const classes = attributes['class'].split(' ').filter(c => c.length > 0);
+      if (classes.length > 0 && !classes[0].match(/\d{10,}/)) {
+        return `.${classes[0]}`;
+      }
+    }
+
+    // Fallback: tag name
+    return tag;
   }
 
   async execute(request: TestExecutionRequest): Promise<TestExecutionResult> {

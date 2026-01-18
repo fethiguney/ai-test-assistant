@@ -104,6 +104,8 @@ export interface StartTestRequest {
   humanInLoop: boolean
   approvalTimeoutSeconds?: number
   browser?: BrowserType
+  enablePageAwareGeneration?: boolean
+  showSnapshotsForApproval?: boolean
   executionOptions?: {
     headless?: boolean
     timeout?: number
@@ -119,10 +121,49 @@ export enum ServerEvents {
   STEP_EXECUTION_UPDATE = 'step:execution_update',
   SESSION_COMPLETED = 'session:completed',
   ERROR = 'error',
+  SNAPSHOT_CAPTURED = 'snapshot:captured',
+  SNAPSHOT_APPROVAL_REQUEST = 'snapshot:approval_request',
 }
 
 export enum ClientEvents {
   START_TEST = 'test:start',
   STEP_APPROVAL = 'step:approval',
   CANCEL_SESSION = 'session:cancel',
+  SNAPSHOT_APPROVAL = 'snapshot:approval',
+}
+
+// ============================================
+// Page Snapshot Types
+// ============================================
+
+export interface PageSnapshot {
+  url: string
+  title: string
+  elements: DOMElement[]
+  timestamp: string
+}
+
+export interface DOMElement {
+  tag: string
+  selector: string
+  text?: string
+  role?: string
+  ariaLabel?: string
+  attributes: Record<string, string>
+}
+
+export interface SnapshotApprovalRequest {
+  sessionId: string
+  stepIndex: number
+  snapshot: PageSnapshot
+  suggestedSelector?: string
+  nextAction?: string
+}
+
+export interface SnapshotApprovalResponse {
+  sessionId: string
+  stepIndex: number
+  approved: boolean
+  modifiedSelector?: string
+  skipSnapshot?: boolean
 }

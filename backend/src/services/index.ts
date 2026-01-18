@@ -25,3 +25,8 @@ export {
 export {
   MCPToolExecutorService,
 } from './mcp-tool-executor.service.js';
+
+export {
+  PageInspectionService,
+  createPageInspectionService,
+} from './page-inspection.service.js';

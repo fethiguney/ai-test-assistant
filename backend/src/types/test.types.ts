@@ -66,6 +66,46 @@ export interface TestGenerationResponse {
 }
 
 // ============================================
+// Page-Aware Test Generation Types
+// ============================================
+
+export interface PageSnapshot {
+  url: string;
+  title: string;
+  elements: DOMElement[];
+  timestamp: Date;
+}
+
+export interface DOMElement {
+  tag: string;
+  selector: string;
+  text?: string;
+  role?: string;
+  ariaLabel?: string;
+  attributes: Record<string, string>;
+}
+
+export interface IterativeStepRequest {
+  scenario: string;
+  previousSteps: TestStep[];
+  currentPageSnapshot?: PageSnapshot;
+  requiresPageContext: boolean;
+}
+
+export interface SnapshotSummary {
+  url: string;
+  title: string;
+  elementCount: number;
+  interactiveElements: {
+    buttons: number;
+    inputs: number;
+    links: number;
+    selects: number;
+  };
+  topElements: DOMElement[];
+}
+
+// ============================================
 // Test Execution Types
 // ============================================
 

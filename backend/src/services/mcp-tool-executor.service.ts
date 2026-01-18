@@ -5,7 +5,7 @@
  * and execute them via the MCP protocol
  */
 
-import { TestStep, TestStepResult } from "../types/index.js";
+import { TestStep, TestStepResult, PageSnapshot, DOMElement, SnapshotSummary } from "../types/index.js";
 
 interface MCPToolCall {
   tool: string;
@@ -218,5 +218,318 @@ export class MCPToolExecutorService {
       "browser_network_requests",
       "browser_tabs",
     ];
+  }
+
+  /**
+   * Capture page snapshot using browser_snapshot MCP tool
+   *
+   * @param mcpConnection - Active MCP connection
+   * @returns PageSnapshot with structured page data
+   */
+  async capturePageSnapshot(mcpConnection: any): Promise<PageSnapshot> {
+    try {
+      // Call browser_snapshot MCP tool
+      const toolCall: MCPToolCall = {
+        tool: "browser_snapshot",
+        arguments: {},
+      };
+
+      const snapshotResult = await this.executeMCPTool(mcpConnection, toolCall);
+
+      // Parse the accessibility tree from MCP response
+      const elements = this.parseAccessibilityTree(snapshotResult);
+
+      // Extract page metadata
+      const pageSnapshot: PageSnapshot = {
+        url: snapshotResult.url || "",
+        title: snapshotResult.title || "",
+        elements: elements,
+        timestamp: new Date(),
+      };
+
+      return pageSnapshot;
+    } catch (error) {
+      console.error("[MCPToolExecutor] Failed to capture page snapshot:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Parse accessibility tree from MCP browser_snapshot response
+   *
+   * @param snapshotResult - Raw MCP snapshot result
+   * @returns Array of structured DOM elements
+   */
+  private parseAccessibilityTree(snapshotResult: any): DOMElement[] {
+    const elements: DOMElement[] = [];
+
+    try {
+      // MCP browser_snapshot returns accessibility tree
+      // We need to traverse it and extract interactive elements
+      const accessibilityTree = snapshotResult.snapshot || snapshotResult.data || snapshotResult;
+
+      if (accessibilityTree && typeof accessibilityTree === "object") {
+        this.extractElementsFromTree(accessibilityTree, elements);
+      }
+    } catch (error) {
+      console.warn("[MCPToolExecutor] Error parsing accessibility tree:", error);
+    }
+
+    return elements;
+  }
+
+  /**
+   * Recursively extract DOM elements from accessibility tree
+   *
+   * @param node - Current node in accessibility tree
+   * @param elements - Array to collect extracted elements
+   * @param path - Current path for generating selectors
+   */
+  private extractElementsFromTree(
+    node: any,
+    elements: DOMElement[],
+    path: string = ""
+  ): void {
+    if (!node || typeof node !== "object") return;
+
+    // Extract element data if it's an interactive element
+    if (this.isInteractiveElement(node)) {
+      const element = this.nodeToElement(node, path);
+      if (element) {
+        elements.push(element);
+      }
+    }
+
+    // Recursively process children
+    if (node.children && Array.isArray(node.children)) {
+      node.children.forEach((child: any, index: number) => {
+        const childPath = path ? `${path} > ${index}` : `${index}`;
+        this.extractElementsFromTree(child, elements, childPath);
+      });
+    }
+  }
+
+  /**
+   * Check if a node represents an interactive element
+   *
+   * @param node - Accessibility tree node
+   * @returns true if element is interactive
+   */
+  private isInteractiveElement(node: any): boolean {
+    const interactiveRoles = [
+      "button",
+      "link",
+      "textbox",
+      "combobox",
+      "checkbox",
+      "radio",
+      "tab",
+      "menuitem",
+      "searchbox",
+      "slider",
+      "spinbutton",
+      "switch",
+    ];
+
+    const interactiveTags = [
+      "button",
+      "a",
+      "input",
+      "select",
+      "textarea",
+      "summary",
+    ];
+
+    const role = node.role?.toLowerCase();
+    const tag = node.tag?.toLowerCase() || node.name?.toLowerCase();
+
+    return (
+      (role && interactiveRoles.includes(role)) ||
+      (tag && interactiveTags.includes(tag)) ||
+      node.clickable === true ||
+      node.focusable === true
+    );
+  }
+
+  /**
+   * Convert accessibility tree node to DOMElement
+   *
+   * @param node - Accessibility tree node
+   * @param path - Path for generating selector
+   * @returns DOMElement or null
+   */
+  private nodeToElement(node: any, path: string): DOMElement | null {
+    try {
+      // Build selector (prefer semantic selectors)
+      const selector = this.buildSelector(node);
+
+      // Extract text content
+      const text = node.name || node.text || node.value || "";
+
+      // Extract attributes
+      const attributes: Record<string, string> = {};
+      if (node.id) attributes.id = node.id;
+      if (node.className) attributes.class = node.className;
+      if (node.type) attributes.type = node.type;
+      if (node.href) attributes.href = node.href;
+      if (node.placeholder) attributes.placeholder = node.placeholder;
+      if (node.value) attributes.value = node.value;
+
+      const element: DOMElement = {
+        tag: node.tag || node.name || "unknown",
+        selector: selector,
+        text: text,
+        role: node.role,
+        ariaLabel: node.ariaLabel || node["aria-label"],
+        attributes: attributes,
+      };
+
+      return element;
+    } catch (error) {
+      console.warn("[MCPToolExecutor] Error converting node to element:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Build a semantic selector for an element
+   *
+   * Priority:
+   * 1. data-testid
+   * 2. id
+   * 3. aria-label
+   * 4. role + name
+   * 5. text content
+   * 6. CSS selector (fallback)
+   *
+   * @param node - Accessibility tree node
+   * @returns Selector string
+   */
+  private buildSelector(node: any): string {
+    // Priority 1: data-testid
+    if (node.testId || node["data-testid"]) {
+      return `[data-testid="${node.testId || node["data-testid"]}"]`;
+    }
+
+    // Priority 2: id
+    if (node.id) {
+      return `#${node.id}`;
+    }
+
+    // Priority 3: aria-label
+    if (node.ariaLabel || node["aria-label"]) {
+      return `[aria-label="${node.ariaLabel || node["aria-label"]}"]`;
+    }
+
+    // Priority 4: role + accessible name
+    if (node.role && node.name) {
+      return `role=${node.role}[name="${node.name}"]`;
+    }
+
+    // Priority 5: text content (for buttons, links)
+    if (node.name && (node.role === "button" || node.role === "link")) {
+      return `text=${node.name}`;
+    }
+
+    // Priority 6: CSS selector fallback
+    if (node.tag) {
+      let selector = node.tag;
+      if (node.className) {
+        selector += `.${node.className.split(" ")[0]}`;
+      }
+      return selector;
+    }
+
+    return "unknown";
+  }
+
+  /**
+   * Extract snapshot summary for human-in-loop approval
+   *
+   * @param snapshot - Full page snapshot
+   * @param topElementCount - Number of top elements to include
+   * @returns Snapshot summary for display
+   */
+  extractSnapshotSummary(
+    snapshot: PageSnapshot,
+    topElementCount: number = 20
+  ): SnapshotSummary {
+    const interactiveElements = {
+      buttons: 0,
+      inputs: 0,
+      links: 0,
+      selects: 0,
+    };
+
+    // Count interactive elements by type
+    snapshot.elements.forEach((element) => {
+      if (element.role === "button" || element.tag === "button") {
+        interactiveElements.buttons++;
+      } else if (
+        element.role === "textbox" ||
+        element.tag === "input" ||
+        element.tag === "textarea"
+      ) {
+        interactiveElements.inputs++;
+      } else if (element.role === "link" || element.tag === "a") {
+        interactiveElements.links++;
+      } else if (element.role === "combobox" || element.tag === "select") {
+        interactiveElements.selects++;
+      }
+    });
+
+    // Get top elements (most likely to be useful)
+    const topElements = snapshot.elements.slice(0, topElementCount);
+
+    return {
+      url: snapshot.url,
+      title: snapshot.title,
+      elementCount: snapshot.elements.length,
+      interactiveElements,
+      topElements,
+    };
+  }
+
+  /**
+   * Format page snapshot for LLM context
+   *
+   * Creates a concise text representation of the page structure
+   * for use in LLM prompts during iterative test generation
+   *
+   * @param snapshot - Page snapshot
+   * @returns Formatted string for LLM context
+   */
+  formatSnapshotForLLM(snapshot: PageSnapshot): string {
+    const lines: string[] = [];
+
+    lines.push(`Page: ${snapshot.title}`);
+    lines.push(`URL: ${snapshot.url}`);
+    lines.push(`Elements found: ${snapshot.elements.length}`);
+    lines.push("");
+    lines.push("Interactive Elements:");
+    lines.push("");
+
+    // Group elements by type
+    const byType: Record<string, DOMElement[]> = {};
+    snapshot.elements.forEach((element) => {
+      const type = element.role || element.tag;
+      if (!byType[type]) {
+        byType[type] = [];
+      }
+      byType[type].push(element);
+    });
+
+    // Format each type
+    Object.entries(byType).forEach(([type, elements]) => {
+      lines.push(`${type.toUpperCase()}:`);
+      elements.forEach((element, index) => {
+        const text = element.text ? ` "${element.text}"` : "";
+        const ariaLabel = element.ariaLabel ? ` [${element.ariaLabel}]` : "";
+        lines.push(`  ${index + 1}. ${element.selector}${text}${ariaLabel}`);
+      });
+      lines.push("");
+    });
+
+    return lines.join("\n");
   }
 }
